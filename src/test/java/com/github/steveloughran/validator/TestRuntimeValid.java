@@ -18,30 +18,17 @@
 
 package com.github.steveloughran.validator;
 
-import java.io.IOException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
+import org.junit.Test;
 
 /**
- *
+ * Let's test that runtime.
  */
-public class CompileFS {
+public class TestRuntimeValid {
 
-  public static final Logger LOG = LoggerFactory.getLogger(CompileFS.class);
+  @Test
+  public void testRuntime() throws Throwable {
+    final CompileFS compileFS = new CompileFS();
+    compileFS.run();
 
-  public FileSystem run() throws IOException {
-    final FileSystem fs = FileSystem.getLocal(new Configuration());
-    LOG.info("fs is {)", fs);
-    return fs;
   }
-  public static void main(String[] args) throws Exception {
-    new CompileFS().run();
-  }
-
 }
-
-
