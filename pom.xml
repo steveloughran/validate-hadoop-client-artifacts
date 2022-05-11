@@ -17,17 +17,13 @@
 
     To build with the client API
 
-    mvn clean package -Pclient
+    mvn clean test
 
     to force an update
 
-    mvn clean package -Pclient -Pstaging -U
+    mvn clean test  -Pstaging -U
 
-    to purge all artifacts of that version from your local maven repo
-    mvn clean -Ppurge
 
-    *do not use with the dependency declaration of -Pclient or things get confused*
-    (it will try to resolve the artifacts, even as they are deleted)
   </description>
 
   <properties>
@@ -49,6 +45,19 @@
   </properties>
 
   <dependencies>
+
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client-api</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client-runtime</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>junit</groupId>
@@ -162,67 +171,6 @@
       </properties>
     </profile>
 
-    <!--    build with the client api-->
-    <profile>
-      <id>client</id>
-
-      <dependencies>
-
-
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-client-api</artifactId>
-          <version>${hadoop.version}</version>
-        </dependency>
-
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-client-runtime</artifactId>
-          <version>${hadoop.version}</version>
-        </dependency>
-
-      </dependencies>
-    </profile>
-
-
-    <profile>
-      <id>purge</id>
-
-      <build>
-        <plugins>
-
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-antrun-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>delete RC artifacts</id>
-                <phase>clean</phase>
-                <goals>
-                  <goal>run</goal>
-                </goals>
-                <configuration>
-                  <target>
-
-                    <property name="mvn.repo"
-                      location="${user.home}/.m2/repository"/>
-                    <property name="hadoop.artifacts"
-                      location="${mvn.repo}/org/apache/hadoop"/>
-
-                    <delete>
-                      <fileset dir="${hadoop.artifacts}"
-                        includes="**/${hadoop.version}/*"/>
-                    </delete>
-
-
-                  </target>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
 
   </profiles>
 

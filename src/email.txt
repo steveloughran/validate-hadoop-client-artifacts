@@ -1,0 +1,44 @@
+[VOTE] Release Apache Hadoop ${hadoop.version}
+
+I have put together a release candidate (${rc}) for Hadoop ${hadoop.version}
+
+The RC is available at:
+https://dist.apache.org/repos/dist/dev/hadoop/${rc.name}/
+
+The git tag is ${tag.name}, commit d37586cbda3
+
+The maven artifacts are staged at
+${nexus.staging.url}
+
+You can find my public key at:
+https://dist.apache.org/repos/dist/release/hadoop/common/KEYS
+
+Change log
+https://dist.apache.org/repos/dist/dev/hadoop/${rc.name}/CHANGELOG.md
+
+Release notes
+https://dist.apache.org/repos/dist/dev/hadoop/${rc.name}/RELEASENOTES.md
+
+There's a very small number of changes, primarily critical code/packaging
+issues and security fixes.
+
+* The critical fixes which shipped in the 3.2.3 release.
+* CVEs in our code and dependencies
+* Shaded client packaging issues.
+* A switch from log4j to reload4j
+
+reload4j is an active fork of the log4j 1.17 library with the classes
+which contain CVEs removed. Even though hadoop never used those classes,
+they regularly raised alerts on security scans and concen from users.
+Switching to the forked project allows us to ship a secure logging
+framework. It will complicate the builds of downstream
+maven/ivy/gradle projects which exclude our log4j artifacts, as they
+need to cut the new dependency instead/as well.
+
+See the release notes for details.
+
+This is the second release attempt. It is the same git commit as before, but
+fully recompiled with another republish to maven staging, which has bee
+verified by building spark, as well as a minimal test project.
+
+Please try the release and vote. The vote will run for 5 days.

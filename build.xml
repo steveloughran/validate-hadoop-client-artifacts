@@ -38,14 +38,24 @@
   <loadproperties srcFile="release.properties" />
   <!--  utterly superfluous, but ensures that IDEA knows about the properties -->
   <property file="release.properties" />
-
-  <property name="dist" location="${target}/dist"/>
-  <property name="artifacts" location="${target}/artifacts"/>
   <property name="rc" value="RC1"/>
 
-  <!--  base name of a release-->
-  <property name="release" value="hadoop-${hadoop.version}"/>
+  <property name="dist.dir" location="${target}/dist"/>
+  <property name="incoming.dir" location="${target}/incoming"/>
 
+
+
+  <!--  base name of a release, 3.3.3-RC0 -->
+  <property name="rc.name" value="${hadoop.version}-${rc}"/>
+
+
+  <property name="release" value="hadoop-${hadoop.version}"/>
+  <property name="release.dir" location="${target}/${release}-${rc}"/>
+  <property name="staged.artifacts.dir" location="${staging.dir}/${rc.name}"/>
+
+  <property name="tag.name" value="release-${rc.name}"/>
+  <property name="nexus.staging.url"
+    value="https://repository.apache.org/content/repositories/orgapachehadoop-1349/"/>
 
 
   <target name="init">
@@ -55,17 +65,27 @@
     </presetdef>
 
     <presetdef name="mvn">
-      <x command="mvn"/>
+      <x executable="mvn"/>
+    </presetdef>
+
+    <presetdef name="gpg">
+      <x executable="gpg"/>
     </presetdef>
 
 
-    <mkdir dir="${dist}"/>
+    <mkdir dir="${target}"/>
+
+    <echo>
+      Fetching and validating artifacts in ${release.dir}
+      staging to ${staging.dir}
+      staged artifacts to ${staged.artifacts.dir}
+    </echo>
   </target>
 
   <target name="clean"
         description="clean up target/ dir">
     <!-- Delete the ${dist} directory trees -->
-    <delete dir="${dist}"/>
+    <delete dir="${target}"/>
   </target>
 
   <target name="purge" depends="init"
@@ -75,6 +95,9 @@
     <property name="hadoop.artifacts"
       location="${mvn.repo}/org/apache/hadoop"/>
 
+    <echo>
+      deleting ${hadoop.artifacts}/**/${hadoop.version}/*
+    </echo>
     <delete>
       <fileset dir="${hadoop.artifacts}"
         includes="**/${hadoop.version}/*"/>
@@ -83,32 +106,128 @@
   </target>
 
   <target name="scp-artifacts" depends="init"
-        description="scp the artifacts from a remote host, cleaning any local entries first">
+        description="scp the artifacts from a remote host. may be slow">
     <fail unless="scp.hostname" />
     <fail unless="scp.user" />
     <fail unless="scp.hadoop.dir" />
     <property name="scp.source"
       value="${scp.user}@${scp.hostname}:${scp.hadoop.dir}/target/artifacts"/>
 
-    <delete dir="${artifacts}"/>
-    <mkdir dir="${artifacts}"/>
+    <delete dir="${incoming.dir}"/>
+    <mkdir dir="${incoming.dir}"/>
 <!-- scp -r $srv:hadoop/target/artifacts ~/Projects/Releases
 -->
     <x executable="scp">
       <arg value="-r"/>
       <arg value="${scp.source}"/>
-      <arg value="${artifacts}"/>
+      <arg value="${incoming.dir}"/>
     </x>
+
   </target>
 
-  <target name="gpg-verify" depends="init"
+
+  <target name="move-scp-artifacts" depends="init"
+        description="move the downloaded artifacts">
+    <delete dir="${release.dir}"/>
+    <move
+      file="${incoming.dir}/artifacts"
+      tofile="${release.dir}"/>
+  </target>
+
+
+  <target name="gpgv" depends="init"
         description="verify the downloaded artifacts">
+    <fail message="dir missing: ${release.dir}">
+        <condition>
+            <not>
+              <available file="${release.dir}"/>
+            </not>
+        </condition>
+    </fail>
+
+    <x executable="ls">
+      <arg value="-l"/>
+      <arg value="${release.dir}"/>
+    </x>
+
+    <presetdef name="gpgv">
+      <gpg dir="${release.dir}">
+      </gpg>
+    </presetdef>
+
+    <gpgv>
+      <arg value="--verify"/>
+      <arg value="${release}-src.tar.gz.asc"/>
+    </gpgv>
+    <gpgv>
+      <arg value="--verify"/>
+      <arg value="${release}-site.tar.gz.asc"/>
+    </gpgv>
+    <gpgv>
+      <arg value="--verify"/>
+      <arg value="${release}.tar.gz.asc"/>
+    </gpgv>
+
+    <gpgv>
+      <arg value="--verify"/>
+      <arg value="${release}-rat.txt.asc"/>
+    </gpgv>
+
+    <gpgv>
+      <arg value="--verify"/>
+      <arg value="RELEASENOTES.md.asc"/>
+    </gpgv>
+
+    <gpgv>
+      <arg value="--verify"/>
+      <arg value="CHANGELOG.md.asc"/>
+    </gpgv>
+
+
+  </target>
+
+  <target name="stage" depends="init"
+        description="copy the RC to the svn staging dir">
+
+    <fail message="unset: ${staging.dir}" />
+
+    <move
+      file="${release.dir}"
+      todir="${staging.dir}"/>
+    <x executable="ls">
+      <arg value="-l"/>
+      <arg value="${staging.dir}"/>
+    </x>
+
+  </target>
+
+  <target name="print-tag-command"
+  description="print the git command to tag the rc">
+    <echo>
+      command to tag the commit is
+
+      git tag -s ${tag.name} -m "Release candidate -${rc.name}"
+      git push apache ${tag.name}
+    </echo>
   </target>
 
 
-  <target name="dist" depends="init"
-        description="generate the distribution">
+  <target name="vote-message"
+    depends="init"
+    description="build the vote message">
 
+
+    <loadfile property="message.txt"
+      srcFile="src/email.txt">
+        <filterchain>
+            <expandproperties/>
+        </filterchain>
+    </loadfile>
+    <property name="message.out"
+      location="${target}/email.txt"/>
+
+    <echo>${message.txt}</echo>
+    <echo file="${message.out}">${message.txt}</echo>
   </target>
 
 </project>
