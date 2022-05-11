@@ -1,0 +1,114 @@
+<!--
+  ~ Licensed to the Apache Software Foundation (ASF) under one
+  ~ or more contributor license agreements.  See the NOTICE file
+  ~ distributed with this work for additional information
+  ~ regarding copyright ownership.  The ASF licenses this file
+  ~ to you under the Apache License, Version 2.0 (the
+  ~ "License"); you may not use this file except in compliance
+  ~ with the License.  You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<project name="download" default="dist" basedir=".">
+  <description>
+    build file to manage validation of artifacts.
+    Maven is one of the targets here.
+
+    hadoop version is set in release.properties;
+    build.properties is required to set source of RC tarball
+
+    All the complex commands are done by executing the unix commands;
+    this build file sets them up by building the commands properly.
+  </description>
+  <!-- set global properties for this build -->
+  <property name="src" location="src"/>
+  <property name="home" location="${user.home}"/>
+  <property name="target" location="target"/>
+  <!--suppress AntResolveInspection -->
+  <property file="build.properties" />
+
+  <!--  this file must exist-->
+  <loadproperties srcFile="release.properties" />
+  <!--  utterly superfluous, but ensures that IDEA knows about the properties -->
+  <property file="release.properties" />
+
+  <property name="dist" location="${target}/dist"/>
+  <property name="artifacts" location="${target}/artifacts"/>
+  <property name="rc" value="RC1"/>
+
+  <!--  base name of a release-->
+  <property name="release" value="hadoop-${hadoop.version}"/>
+
+
+
+  <target name="init">
+
+    <presetdef name="x">
+      <exec failonerror="true"/>
+    </presetdef>
+
+    <presetdef name="mvn">
+      <x command="mvn"/>
+    </presetdef>
+
+
+    <mkdir dir="${dist}"/>
+  </target>
+
+  <target name="clean"
+        description="clean up target/ dir">
+    <!-- Delete the ${dist} directory trees -->
+    <delete dir="${dist}"/>
+  </target>
+
+  <target name="purge" depends="init"
+        description="purge all artifacts from the maven repo">
+    <property name="mvn.repo"
+      location="${user.home}/.m2/repository"/>
+    <property name="hadoop.artifacts"
+      location="${mvn.repo}/org/apache/hadoop"/>
+
+    <delete>
+      <fileset dir="${hadoop.artifacts}"
+        includes="**/${hadoop.version}/*"/>
+    </delete>
+
+  </target>
+
+  <target name="scp-artifacts" depends="init"
+        description="scp the artifacts from a remote host, cleaning any local entries first">
+    <fail unless="scp.hostname" />
+    <fail unless="scp.user" />
+    <fail unless="scp.hadoop.dir" />
+    <property name="scp.source"
+      value="${scp.user}@${scp.hostname}:${scp.hadoop.dir}/target/artifacts"/>
+
+    <delete dir="${artifacts}"/>
+    <mkdir dir="${artifacts}"/>
+<!-- scp -r $srv:hadoop/target/artifacts ~/Projects/Releases
+-->
+    <x executable="scp">
+      <arg value="-r"/>
+      <arg value="${scp.source}"/>
+      <arg value="${artifacts}"/>
+    </x>
+  </target>
+
+  <target name="gpg-verify" depends="init"
+        description="verify the downloaded artifacts">
+  </target>
+
+
+  <target name="dist" depends="init"
+        description="generate the distribution">
+
+  </target>
+
+</project>
