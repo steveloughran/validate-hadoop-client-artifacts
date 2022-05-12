@@ -28,6 +28,7 @@
     this build file sets them up by building the commands properly.
 
     for building other modules to work, this ant build must be on java11
+
     set -gx JAVA_HOME $JAVA11_HOME; and echo $JAVA_HOME
   </description>
   <!-- set global properties for this build -->
@@ -35,14 +36,13 @@
   <property name="home" location="${user.home}"/>
   <property name="target" location="target"/>
   <!--suppress AntResolveInspection -->
-  <property file="build.properties" />
+  <property file="build.properties"/>
 
 
   <property name="rc" value="RC1"/>
 
   <property name="dist.dir" location="${target}/dist"/>
   <property name="incoming.dir" location="${target}/incoming"/>
-
 
 
   <!--  base name of a release, 3.3.3-RC0 -->
@@ -77,6 +77,13 @@
       <x executable="gpg"/>
     </presetdef>
 
+    <macrodef name="require">
+      <attribute name="p" />
+        <sequential>
+          <fail unless="@{p}" message="unset property @{p}" />
+        </sequential>
+    </macrodef>
+
 
     <mkdir dir="${target}"/>
 
@@ -94,13 +101,13 @@
   </target>
 
   <target name="clean"
-        description="clean up target/ dir">
+    description="clean up target/ dir">
     <!-- Delete the ${dist} directory trees -->
     <delete dir="${target}"/>
   </target>
 
   <target name="purge" depends="init"
-        description="purge all artifacts from the maven repo">
+    description="purge all artifacts from the maven repo">
     <property name="mvn.repo"
       location="${user.home}/.m2/repository"/>
     <property name="hadoop.artifacts"
@@ -116,8 +123,8 @@
 
   </target>
 
-  <target name="test"  depends="init"
-        description="build and test the maven module">
+  <target name="test" depends="init"
+    description="build and test the maven module">
 
     <mvn>
       <arg value="test"/>
@@ -127,17 +134,17 @@
 
 
   <target name="scp-artifacts" depends="init"
-        description="scp the artifacts from a remote host. may be slow">
-    <fail unless="scp.hostname" />
-    <fail unless="scp.user" />
-    <fail unless="scp.hadoop.dir" />
+    description="scp the artifacts from a remote host. may be slow">
+    <fail unless="scp.hostname"/>
+    <fail unless="scp.user"/>
+    <fail unless="scp.hadoop.dir"/>
     <property name="scp.source"
       value="${scp.user}@${scp.hostname}:${scp.hadoop.dir}/target/artifacts"/>
 
     <delete dir="${incoming.dir}"/>
     <mkdir dir="${incoming.dir}"/>
-<!-- scp -r $srv:hadoop/target/artifacts ~/Projects/Releases
--->
+    <!-- scp -r $srv:hadoop/target/artifacts ~/Projects/Releases
+    -->
     <x executable="scp">
       <arg value="-r"/>
       <arg value="${scp.source}"/>
@@ -148,7 +155,7 @@
 
 
   <target name="move-scp-artifacts" depends="init"
-        description="move the downloaded artifacts">
+    description="move the downloaded artifacts">
     <delete dir="${release.dir}"/>
     <move
       file="${incoming.dir}/artifacts"
@@ -157,13 +164,13 @@
 
 
   <target name="gpgv" depends="init"
-        description="verify the downloaded artifacts">
+    description="verify the downloaded artifacts">
     <fail message="dir missing: ${release.dir}">
-        <condition>
-            <not>
-              <available file="${release.dir}"/>
-            </not>
-        </condition>
+      <condition>
+        <not>
+          <available file="${release.dir}"/>
+        </not>
+      </condition>
     </fail>
 
     <x executable="ls">
@@ -208,9 +215,9 @@
   </target>
 
   <target name="stage" depends="init"
-        description="copy the RC to the svn staging dir">
+    description="copy the RC to the svn staging dir">
 
-    <fail message="unset: ${staging.dir}" />
+    <fail message="unset: ${staging.dir}"/>
 
     <move
       file="${release.dir}"
@@ -223,7 +230,7 @@
   </target>
 
   <target name="print-tag-command"
-  description="print the git command to tag the rc">
+    description="print the git command to tag the rc">
     <echo>
       command to tag the commit is
 
@@ -240,9 +247,9 @@
 
     <loadfile property="message.txt"
       srcFile="src/email.txt">
-        <filterchain>
-            <expandproperties/>
-        </filterchain>
+      <filterchain>
+        <expandproperties/>
+      </filterchain>
     </loadfile>
     <property name="message.out"
       location="${target}/email.txt"/>
@@ -257,7 +264,7 @@
     <echo>
 
 
-Note: this build includes kinesis and ASL artifacts
+      Note: this build includes kinesis and ASL artifacts
     </echo>
     <mvn dir="${spark.dir}">
       <arg value="-Psnapshots-and-staging"/>
@@ -275,21 +282,42 @@ Note: this build includes kinesis and ASL artifacts
 
 
   <target name="cloud-examples.build" if="cloud-examples.dir"
-  depends="init"
-  description="build the cloud examples release in spark.dir">
-  <echo>
-    Build the cloud examples modules
-  </echo>
-  <mvn dir="${cloud-examples.dir}">
-    <arg value="-Psnapshots-and-staging"/>
-    <arg value="-Dspark-3.4"/>
-    <arg value="-Dspark.version=${spark.version}"/>
-    <arg value="-DskipTests"/>
-    <arg value="-Dhadoop.version=${hadoop.version}"/>
-    <arg value="clean"/>
-    <arg value="install"/>
-  </mvn>
-</target>
+    depends="init"
+    description="build the cloud examples release">
+    <echo>
+      Build the cloud examples modules
+    </echo>
+    <mvn dir="${cloud-examples.dir}">
+      <arg value="-Psnapshots-and-staging"/>
+      <arg value="-Dspark-3.4"/>
+      <arg value="-Dspark.version=${spark.version}"/>
+      <arg value="-DskipTests"/>
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="clean"/>
+      <arg value="install"/>
+    </mvn>
+  </target>
+
+
+  <target name="cloud-examples.test"
+    if="cloud-examples.dir"
+    depends="init"
+    description="test the cloud examples">
+    <echo>
+      Test the cloud examples;
+      cloud.test.configuration.file must point to the xml file with binding info
+    </echo>
+    <require p="cloud.test.configuration.file" />
+    <mvn dir="${cloud-examples.dir}">
+      <arg value="-Psnapshots-and-staging"/>
+      <arg value="-Dspark-3.4"/>
+      <arg value="-Dspark.version=${spark.version}"/>
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="-Dcloud.test.configuration.file=${cloud.test.configuration.file}"/>
+      <arg value="clean"/>
+      <arg value="test"/>
+    </mvn>
+  </target>
 
 
   <target name="gcs.build" if="bigdata-interop.dir"
@@ -307,6 +335,7 @@ Note: this build includes kinesis and ASL artifacts
       <arg value="-DskipTests"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="clean"/>
+      <arg value="package"/>
       <arg value="install"/>
     </mvn>
   </target>
