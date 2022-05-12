@@ -26,6 +26,9 @@
 
     All the complex commands are done by executing the unix commands;
     this build file sets them up by building the commands properly.
+
+    for building other modules to work, this ant build must be on java11
+    set -gx JAVA_HOME $JAVA11_HOME; and echo $JAVA_HOME
   </description>
   <!-- set global properties for this build -->
   <property name="src" location="src"/>
@@ -34,10 +37,7 @@
   <!--suppress AntResolveInspection -->
   <property file="build.properties" />
 
-  <!--  this file must exist-->
-  <loadproperties srcFile="release.properties" />
-  <!--  utterly superfluous, but ensures that IDEA knows about the properties -->
-  <property file="release.properties" />
+
   <property name="rc" value="RC1"/>
 
   <property name="dist.dir" location="${target}/dist"/>
@@ -46,7 +46,12 @@
 
 
   <!--  base name of a release, 3.3.3-RC0 -->
+  <property name="hadoop.version" value="3.3.3"/>
   <property name="rc.name" value="${hadoop.version}-${rc}"/>
+  <property name="rc.name" value="${hadoop.version}-${rc}"/>
+
+  <!-- for spark builds -->
+  <property name="spark.version" value="3.4.0-SNAPSHOT"/>
 
 
   <property name="release" value="hadoop-${hadoop.version}"/>
@@ -76,9 +81,15 @@
     <mkdir dir="${target}"/>
 
     <echo>
+      hadoop.version=${hadoop.version}
       Fetching and validating artifacts in ${release.dir}
       staging to ${staging.dir}
       staged artifacts to ${staged.artifacts.dir}
+      spark.dir = ${spark.dir}
+      spark.version=${spark.version}
+      cloud-examples.dir=${cloud-examples.dir}
+      bigdata-interop.dir=${bigdata-interop.dir}
+      hboss.dir=${hboss.dir}
     </echo>
   </target>
 
@@ -104,6 +115,16 @@
     </delete>
 
   </target>
+
+  <target name="test"  depends="init"
+        description="build and test the maven module">
+
+    <mvn>
+      <arg value="test"/>
+      <arg value="-Pstaging"/>
+    </mvn>
+  </target>
+
 
   <target name="scp-artifacts" depends="init"
         description="scp the artifacts from a remote host. may be slow">
@@ -228,6 +249,86 @@
 
     <echo>${message.txt}</echo>
     <echo file="${message.out}">${message.txt}</echo>
+  </target>
+
+  <target name="spark.build" if="spark.dir"
+    depends="init"
+    description="build the spark release in spark.dir">
+    <echo>
+
+
+Note: this build includes kinesis and ASL artifacts
+    </echo>
+    <mvn dir="${spark.dir}">
+      <arg value="-Psnapshots-and-staging"/>
+      <arg value="-Phadoop-cloud"/>
+      <arg value="-Pyarn"/>
+      <arg value="-Pkinesis-asl"/>
+      <arg value="-DskipTests"/>
+      <arg value="-Dmaven.javadoc.skip=true"/>
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="clean"/>
+      <arg value="install"/>
+    </mvn>
+
+  </target>
+
+
+  <target name="cloud-examples.build" if="cloud-examples.dir"
+  depends="init"
+  description="build the cloud examples release in spark.dir">
+  <echo>
+    Build the cloud examples modules
+  </echo>
+  <mvn dir="${cloud-examples.dir}">
+    <arg value="-Psnapshots-and-staging"/>
+    <arg value="-Dspark-3.4"/>
+    <arg value="-Dspark.version=${spark.version}"/>
+    <arg value="-DskipTests"/>
+    <arg value="-Dhadoop.version=${hadoop.version}"/>
+    <arg value="clean"/>
+    <arg value="install"/>
+  </mvn>
+</target>
+
+
+  <target name="gcs.build" if="bigdata-interop.dir"
+    depends="init"
+    description="Build the google gcs artifacts">
+    <echo>
+      Build the google gcs artifacts.
+
+      requires bigdata-interop.dir to be set to the base
+      of a copy of
+      https://github.com/GoogleCloudPlatform/bigdata-intero
+    </echo>
+    <mvn dir="${bigdata-interop.dir}">
+      <arg value="-Psnapshots-and-staging"/>
+      <arg value="-DskipTests"/>
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="clean"/>
+      <arg value="install"/>
+    </mvn>
+  </target>
+
+  <target name="hboss.build" if="hboss.dir"
+    depends="init"
+    description="Build the google gcs artifacts">
+    <echo>
+      Build the HBase HBoss module.
+      It's test are brittle to s3a internal changes, just because
+      it needs to plug in its own s3 client.
+
+      asf-staging is a profile in stevel's ~/.m2/settings.xml to
+      use the asf staging reop.
+    </echo>
+    <mvn dir="${hboss.dir}">
+      <arg value="-Pasf-staging"/>
+      <arg value="-DskipTests"/>
+      <arg value="-Dhadoop33.version=${hadoop.version}"/>
+      <arg value="clean"/>
+      <arg value="install"/>
+    </mvn>
   </target>
 
 </project>

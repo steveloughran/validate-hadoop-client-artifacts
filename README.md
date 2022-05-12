@@ -2,9 +2,18 @@
 
 This project imports the hadoop client artifacts to verify that they are (a) published on the maven repository and (b) contain the classes we expect.
 
-It also has an ant `build.xml` file to help with preparing the release,
+It has an ant `build.xml` file to help with preparing the release,
 validating gpg signatures, creating release messages and other things.
 
+# ant builds
+
+Look in the build.xml for details, including working with other modules
+
+
+
+
+
+# maven builds
 
 To build and test with the client API:
 
