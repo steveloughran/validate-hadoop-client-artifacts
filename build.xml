@@ -94,9 +94,11 @@
       staged artifacts to ${staged.artifacts.dir}
       spark.dir = ${spark.dir}
       spark.version=${spark.version}
-      cloud-examples.dir=${cloud-examples.dir}
+
       bigdata-interop.dir=${bigdata-interop.dir}
       hboss.dir=${hboss.dir}
+      cloud-examples.dir=${cloud-examples.dir}
+      cloud.test.configuration.file=${cloud.test.configuration.file}
     </echo>
   </target>
 
@@ -342,7 +344,7 @@
 
   <target name="hboss.build" if="hboss.dir"
     depends="init"
-    description="Build the google gcs artifacts">
+    description="Build the hboss artifacts">
     <echo>
       Build the HBase HBoss module.
       It's test are brittle to s3a internal changes, just because
