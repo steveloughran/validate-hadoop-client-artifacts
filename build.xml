@@ -95,6 +95,7 @@
       spark.dir = ${spark.dir}
       spark.version=${spark.version}
 
+      cloudstore.dir=${cloudstore.dir}
       bigdata-interop.dir=${bigdata-interop.dir}
       hboss.dir=${hboss.dir}
       cloud-examples.dir=${cloud-examples.dir}
@@ -359,6 +360,25 @@
       <arg value="-Dhadoop33.version=${hadoop.version}"/>
       <arg value="clean"/>
       <arg value="install"/>
+    </mvn>
+  </target>
+
+
+  <target name="cloudstore.build" if="cloudstore.dir"
+    depends="init"
+    description="Build the cloudstore artifacts">
+    <echo>
+      Build the cloudstore module.
+      if this is done with java11, it shouldn't be released.
+
+    </echo>
+    <mvn dir="${cloudstore.dir}">
+      <arg value="-Psnapshots-and-staging"/>
+      <arg value="-Pextra"/>
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="clean"/>
+      <arg value="package"/>
+
     </mvn>
   </target>
 
