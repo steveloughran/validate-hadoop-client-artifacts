@@ -43,4 +43,31 @@ To purge all artifacts of the chosen hadoop version from your local maven reposi
 ant purge
 ```
 
+# download and build someone else's release candidate
 
+In build properties, declare `hadoop.version`, `rc` and `http.source`
+
+```properties
+hadoop version=2.10.2
+rc=0
+http.source=https://home.apache.org/~iwasakims/hadoop-2.10.2-RC0/
+```
+
+targets of relevance
+
+| target             | action                     |
+|--------------------|----------------------------|
+| release.fetch.http | fetch artifacts            |
+| release.dir.check  | verify release dir exists  |
+| release.src.untar  | untar retrieved artifacts  |
+| release.src.build  | build the source           |
+| release.src.test   | build and test the source  |
+| gpg.keys           | import the hadoop KEYS     |
+| gpg.verify         | verify the D/L'd artifacts |
+|                    |                            |
+|                    |                            |
+|                    |                            |
+|                    |                            |
+|                    |                            |
+
+set `release.native.binaries` to false to skip native binary checks on platforms without them

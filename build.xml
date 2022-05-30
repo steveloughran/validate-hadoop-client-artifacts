@@ -21,7 +21,7 @@
     build file to manage validation of artifacts.
     Maven is one of the targets here.
 
-    hadoop version is set in release.properties;
+    hadoop version is set in the property hadoop.version
     build.properties is required to set source of RC tarball
 
     All the complex commands are done by executing the unix commands;
@@ -30,6 +30,12 @@
     for building other modules to work, this ant build must be on java11
 
     set -gx JAVA_HOME $JAVA11_HOME; and echo $JAVA_HOME
+
+    or in fish
+
+    For validating artifacts put up as an an RC, use the http-artifacts target
+    to retrieve, with http.source set to the url, e.g
+    http.source=https://home.apache.org/~iwasakims/hadoop-2.10.2-RC0/
   </description>
   <!-- set global properties for this build -->
   <property name="src" location="src"/>
@@ -48,7 +54,6 @@
   <!--  base name of a release, 3.3.3-RC0 -->
   <property name="hadoop.version" value="3.3.3"/>
   <property name="rc.name" value="${hadoop.version}-${rc}"/>
-  <property name="rc.name" value="${hadoop.version}-${rc}"/>
 
   <!-- for spark builds -->
   <property name="spark.version" value="3.4.0-SNAPSHOT"/>
@@ -60,7 +65,11 @@
 
   <property name="tag.name" value="release-${rc.name}"/>
   <property name="nexus.staging.url"
-    value="https://repository.apache.org/content/repositories/orgapachehadoop-1349/"/>
+    value=""/>
+  <property name="release.untar.dir" location="${target}/untar"/>
+  <property name="release.source.dir" location="${release.untar.dir}/source"/>
+  <property name="release.bin.dir" location="${release.untar.dir}/bin"/>
+  <property name="release.native.binaries" value="true"/>
 
 
   <target name="init">
@@ -77,6 +86,25 @@
       <x executable="gpg"/>
     </presetdef>
 
+
+    <macrodef name="require-dir">
+      <attribute name="dir" />
+        <sequential>
+          <fail message="dir missing: @{dir}">
+            <condition>
+              <not>
+                <available file="@{dir}"/>
+              </not>
+            </condition>
+          </fail>
+
+        </sequential>
+    </macrodef>
+
+    <presetdef name="verify-release-dir">
+      <require-dir dir="${release.dir}" />
+    </presetdef>
+
     <macrodef name="require">
       <attribute name="p" />
         <sequential>
@@ -87,11 +115,23 @@
 
     <mkdir dir="${target}"/>
 
+    <property name="scp.source"
+      value="${scp.user}@${scp.hostname}:${scp.hadoop.dir}/target/artifacts"/>
+
     <echo>
       hadoop.version=${hadoop.version}
+      rc=${rc}
+
       Fetching and validating artifacts in ${release.dir}
-      staging to ${staging.dir}
-      staged artifacts to ${staged.artifacts.dir}
+      release.dir=${release.dir}
+
+      scp.source=${scp.source}
+      http.source=${http.source}
+
+      release.source.dir=${release.source.dir}
+      staging.dir=${staging.dir}
+      staged.artifacts.dir=${staged.artifacts.dir}
+
       spark.dir = ${spark.dir}
       spark.version=${spark.version}
 
@@ -100,6 +140,7 @@
       hboss.dir=${hboss.dir}
       cloud-examples.dir=${cloud-examples.dir}
       cloud.test.configuration.file=${cloud.test.configuration.file}
+
     </echo>
   </target>
 
@@ -126,7 +167,7 @@
 
   </target>
 
-  <target name="test" depends="init"
+  <target name="mvn-test" depends="init"
     description="build and test the maven module">
 
     <mvn>
@@ -165,22 +206,29 @@
       tofile="${release.dir}"/>
   </target>
 
+  <target name="release.dir.check" depends="init">
+    <verify-release-dir />
 
-  <target name="gpgv" depends="init"
-    description="verify the downloaded artifacts">
-    <fail message="dir missing: ${release.dir}">
-      <condition>
-        <not>
-          <available file="${release.dir}"/>
-        </not>
-      </condition>
-    </fail>
 
     <x executable="ls">
       <arg value="-l"/>
       <arg value="${release.dir}"/>
     </x>
 
+  </target>
+
+
+  <target name="gpg.keys" depends="init"
+    description="fetch GPG keys">
+
+    <gpg>
+      <arg value="--fetch-keys"/>
+      <arg value="https://downloads.apache.org/hadoop/common/KEYS"/>
+    </gpg>
+  </target>
+
+  <target name="gpg.verify" depends="release.dir.check"
+    description="verify the downloaded artifacts">
     <presetdef name="gpgv">
       <gpg dir="${release.dir}">
       </gpg>
@@ -266,7 +314,6 @@
     description="build the spark release in spark.dir">
     <echo>
 
-
       Note: this build includes kinesis and ASL artifacts
     </echo>
     <mvn dir="${spark.dir}">
@@ -290,15 +337,7 @@
     <echo>
       Build the cloud examples modules
     </echo>
-    <mvn dir="${cloud-examples.dir}">
-      <arg value="-Psnapshots-and-staging"/>
-      <arg value="-Dspark-3.4"/>
-      <arg value="-Dspark.version=${spark.version}"/>
-      <arg value="-DskipTests"/>
-      <arg value="-Dhadoop.version=${hadoop.version}"/>
-      <arg value="clean"/>
-      <arg value="install"/>
-    </mvn>
+
   </target>
 
 
@@ -357,6 +396,7 @@
     <mvn dir="${hboss.dir}">
       <arg value="-Pasf-staging"/>
       <arg value="-DskipTests"/>
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="-Dhadoop33.version=${hadoop.version}"/>
       <arg value="clean"/>
       <arg value="install"/>
@@ -378,8 +418,112 @@
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="clean"/>
       <arg value="package"/>
-
     </mvn>
   </target>
 
+
+  <!--  Fetch the artifacts from an http repo, for validating someone else's release.
+   the download is into incoming.dir, then after a cleanup copied into release.dir; -->
+  <target name="release.fetch.http" depends="init"
+    description="fetch the artifacts from a remote http site with wget. may be slow">
+    <fail unless="http.source"/>
+
+
+    <delete dir="${incoming.dir}"/>
+    <mkdir dir="${incoming.dir}"/>
+    <!-- list and then wget the immediate children  into the incoming dir -->
+    <x executable="wget" dir="${incoming.dir}" >
+      <arg value="--no-parent"/>
+      <arg value="--recursive"/>
+      <arg value="--level=1"/>
+      <arg value="--no-directories"/>
+      <arg value="${http.source}"/>
+    </x>
+    <!--  remove all index.html files which crept in -->
+    <delete dir="${incoming.dir}" includes="index.*" />
+
+    <delete dir="${release.dir}"/>
+    <move
+      file="${incoming.dir}"
+      tofile="${release.dir}"/>
+  </target>
+
+  <target name="release.src.untar" depends="release.dir.check"
+    description="untar the release">
+
+    <gunzip src="${release.dir}/${release}-src.tar.gz" dest="target/untar"/>
+    <untar src="target/untar/${release}-src.tar" dest="${release.source.dir}" />
+  </target>
+
+  <target name="release.src.build" depends="init"
+    description="build the release; call release.src.untar if needed">
+    <mvn dir="${release.source.dir}/${release}-src">
+      <arg value="clean"/>
+      <arg value="install"/>
+      <arg value="-DskipTests"/>
+    </mvn>
+  </target>
+
+  <target name="release.src.test" depends="init"
+    description="test the release; call release.src.untar if needed">
+    <mvn dir="${release.source.dir}/${release}-src">
+      <arg value="clean"/>
+      <arg value="test"/>
+    </mvn>
+  </target>
+
+  <target name="release.bin.untar" depends="release.dir.check"
+    description="untar the release">
+
+    <gunzip src="${release.dir}/${release}.tar.gz" dest="target/untar"/>
+
+    <!--  use the native command to preserve properties -->
+    <x executable="tar" dir="target/untar" >
+      <arg value="-xf" />
+      <arg value="${release}.tar" />
+    </x>
+    <echo>
+      Binary release expanded into target/untar/${release}
+    </echo>
+  </target>
+
+  <target name="release.bin.commands" depends="init"
+    description="run test hadoop commands ">
+
+
+    <!--   hadoop with errors-->
+    <presetdef name="hadoop">
+      <exec failonerror="true"
+        executable="bin/hadoop"
+        dir="target/untar/${release}" />
+    </presetdef>
+
+    <!--    quiet hadoop-->
+    <presetdef name="hadoopq">
+      <exec failonerror="false"
+        executable="bin/hadoop"
+        dir="target/untar/${release}" />
+    </presetdef>
+    <echo>ls</echo>
+    <hadoop>
+      <arg value="fs" />
+      <arg value="-ls" />
+      <arg value="file://${target}" />
+    </hadoop>
+
+    <echo>du</echo>
+    <hadoop>
+      <arg value="fs" />
+      <arg value="-du" />
+      <arg value="-h" />
+      <arg value="file://${target}" />
+    </hadoop>
+
+    <echo>checknative</echo>
+
+    <hadoopq failonerror="${release.native.binaries}">
+      <arg value="checknative" />
+    </hadoopq>
+
+  </target>
 </project>
