@@ -16,9 +16,9 @@
   ~ limitations under the License.
   -->
 
-<project name="download" default="dist" basedir=".">
+<project name="release-validator" default="init" basedir=".">
   <description>
-    build file to manage validation of artifacts.
+    build file to manage release and validation of artifacts.
     Maven is one of the targets here.
 
     hadoop version is set in the property hadoop.version
@@ -28,10 +28,6 @@
     this build file sets them up by building the commands properly.
 
     for building other modules to work, this ant build must be on java11
-
-    set -gx JAVA_HOME $JAVA11_HOME; and echo $JAVA_HOME
-
-    or in fish
 
     For validating artifacts put up as an an RC, use the http-artifacts target
     to retrieve, with http.source set to the url, e.g
@@ -45,14 +41,14 @@
   <property file="build.properties"/>
 
 
-  <property name="rc" value="RC1"/>
+  <property name="rc" value="RC0"/>
 
   <property name="dist.dir" location="${target}/dist"/>
   <property name="incoming.dir" location="${target}/incoming"/>
 
 
-  <!--  base name of a release, 3.3.3-RC0 -->
-  <property name="hadoop.version" value="3.3.3"/>
+  <!--  base name of a release, 3.3.4-RC0 -->
+  <property name="hadoop.version" value="3.3.4"/>
   <property name="rc.name" value="${hadoop.version}-${rc}"/>
 
   <!-- for spark builds -->
@@ -60,7 +56,8 @@
 
 
   <property name="release" value="hadoop-${hadoop.version}"/>
-  <property name="release.dir" location="${target}/${release}-${rc}"/>
+  <property name="rc-dirname" value="${release}-${rc}"/>
+  <property name="release.dir" location="${target}/${rc-dirname}"/>
   <property name="staged.artifacts.dir" location="${staging.dir}/${rc.name}"/>
 
   <property name="tag.name" value="release-${rc.name}"/>
@@ -121,6 +118,7 @@
     <echo>
       hadoop.version=${hadoop.version}
       rc=${rc}
+      git.commit.id=${git.commit.id}
 
       Fetching and validating artifacts in ${release.dir}
       release.dir=${release.dir}
@@ -150,7 +148,7 @@
     <delete dir="${target}"/>
   </target>
 
-  <target name="purge" depends="init"
+  <target name="purge-from-maven" depends="init"
     description="purge all artifacts from the maven repo">
     <property name="mvn.repo"
       location="${user.home}/.m2/repository"/>
@@ -187,6 +185,7 @@
 
     <delete dir="${incoming.dir}"/>
     <mkdir dir="${incoming.dir}"/>
+    <echo>Downloading to ${incoming.dir}; may take a while</echo>
     <!-- scp -r $srv:hadoop/target/artifacts ~/Projects/Releases
     -->
     <x executable="scp">
@@ -204,11 +203,11 @@
     <move
       file="${incoming.dir}/artifacts"
       tofile="${release.dir}"/>
+    <echo>Moved scp downloaded artifacts to ${release.dir}</echo>
   </target>
 
   <target name="release.dir.check" depends="init">
     <verify-release-dir />
-
 
     <x executable="ls">
       <arg value="-l"/>
@@ -268,7 +267,7 @@
   <target name="stage" depends="init"
     description="copy the RC to the svn staging dir">
 
-    <fail message="unset: ${staging.dir}"/>
+    <fail message="unset: staging.dir" unless="staging.dir"/>
 
     <move
       file="${release.dir}"
@@ -281,11 +280,13 @@
   </target>
 
   <target name="print-tag-command"
-    description="print the git command to tag the rc">
+    description="print the git command to tag the rc"
+    depends="init">
+    <require p="git.commit.id"/>
     <echo>
       command to tag the commit is
 
-      git tag -s ${tag.name} -m "Release candidate -${rc.name}"
+      git tag -s ${tag.name} -m "Release candidate ${rc.name}" ${git.commit.id}
       git push apache ${tag.name}
     </echo>
   </target>
@@ -295,6 +296,13 @@
     depends="init"
     description="build the vote message">
 
+    <fail unless="git.commit.id">
+      Set the git commit number in git.commit.id
+    </fail>
+
+    <fail unless="nexus.staging.url">
+      Set the nexus staging repository URL in nexus.staging.url
+    </fail>
 
     <loadfile property="message.txt"
       srcFile="src/email.txt">
@@ -307,6 +315,11 @@
 
     <echo>${message.txt}</echo>
     <echo file="${message.out}">${message.txt}</echo>
+    <echo>
+----------
+Message is in file ${message.out}
+    </echo>
+
   </target>
 
   <target name="spark.build" if="spark.dir"
@@ -431,7 +444,7 @@
 
     <delete dir="${incoming.dir}"/>
     <mkdir dir="${incoming.dir}"/>
-    <!-- list and then wget the immediate children  into the incoming dir -->
+    <!-- list and then wget the immediate children into the incoming dir -->
     <x executable="wget" dir="${incoming.dir}" >
       <arg value="--no-parent"/>
       <arg value="--recursive"/>
@@ -449,7 +462,7 @@
   </target>
 
   <target name="release.src.untar" depends="release.dir.check"
-    description="untar the release">
+    description="untar the release source">
 
     <gunzip src="${release.dir}/${release}-src.tar.gz" dest="target/untar"/>
     <untar src="target/untar/${release}-src.tar" dest="${release.source.dir}" />
