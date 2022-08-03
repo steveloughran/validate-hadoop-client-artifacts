@@ -53,6 +53,11 @@
 
   <!-- for spark builds -->
   <property name="spark.version" value="3.4.0-SNAPSHOT"/>
+  <!--  spark excludes hadoop-aws dependency and forces in their own
+        this fixes it to be in sync with hadoop 3.3.4 RC1
+        see https://issues.apache.org/jira/browse/SPARK-39969
+   -->
+  <property name="spark.aws.version" value="1.12.262"/>
 
 
   <property name="release" value="hadoop-${hadoop.version}"/>
@@ -61,8 +66,8 @@
   <property name="staged.artifacts.dir" location="${staging.dir}/${rc.name}"/>
 
   <property name="tag.name" value="release-${rc.name}"/>
-  <property name="nexus.staging.url"
-    value=""/>
+<!--  <property name="nexus.staging.url"
+    value=""/>-->
   <property name="release.untar.dir" location="${target}/untar"/>
   <property name="release.source.dir" location="${release.untar.dir}/source"/>
   <property name="release.bin.dir" location="${release.untar.dir}/bin"/>
@@ -122,6 +127,7 @@
 
       Fetching and validating artifacts in ${release.dir}
       release.dir=${release.dir}
+      nexus.staging.url=${nexus.staging.url}
 
       scp.source=${scp.source}
       http.source=${http.source}
@@ -146,6 +152,10 @@
     description="clean up target/ dir">
     <!-- Delete the ${dist} directory trees -->
     <delete dir="${target}"/>
+  </target>
+
+  <target name="ant">
+    <echo>duplicate ant on the command line</echo>
   </target>
 
   <target name="purge-from-maven" depends="init"
@@ -265,10 +275,11 @@
   </target>
 
   <target name="stage" depends="init"
-    description="copy the RC to the svn staging dir">
+    description="move the RC to the svn staging dir">
 
     <fail message="unset: staging.dir" unless="staging.dir"/>
 
+    <echo>copying to ${staging.dir}</echo>
     <move
       file="${release.dir}"
       todir="${staging.dir}"/>
@@ -276,6 +287,10 @@
       <arg value="-l"/>
       <arg value="${staging.dir}"/>
     </x>
+    <echo>
+      Now go to the staging dir and add/commit
+
+    </echo>
 
   </target>
 
@@ -337,6 +352,7 @@ Message is in file ${message.out}
       <arg value="-DskipTests"/>
       <arg value="-Dmaven.javadoc.skip=true"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="-Daws.java.sdk.version=${spark.aws.version}"/>
       <arg value="clean"/>
       <arg value="install"/>
     </mvn>
@@ -386,8 +402,26 @@ Message is in file ${message.out}
       https://github.com/GoogleCloudPlatform/bigdata-intero
     </echo>
     <mvn dir="${bigdata-interop.dir}">
+      <arg value="-T 1C"/>
       <arg value="-Psnapshots-and-staging"/>
       <arg value="-DskipTests"/>
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="clean"/>
+      <arg value="package"/>
+      <arg value="install"/>
+    </mvn>
+  </target>
+
+
+  <target name="gi" if="bigdata-interop.dir"
+    depends="init"
+    description="Build and test the google gcs artifacts">
+    <echo>
+      Test the google gcs artifacts. Requires GCS credentials.
+    </echo>
+    <mvn dir="${bigdata-interop.dir}">
+      <arg value="-T 1C"/>
+      <arg value="-Psnapshots-and-staging"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="clean"/>
       <arg value="package"/>
@@ -415,6 +449,25 @@ Message is in file ${message.out}
       <arg value="install"/>
     </mvn>
   </target>
+  <target name="hboss.test" if="hboss.dir"
+    depends="init"
+    description="Build and test the hboss artifacts">
+    <echo>
+      Build the HBase HBoss module.
+      It's test are brittle to s3a internal changes, just because
+      it needs to plug in its own s3 client.
+
+      asf-staging is a profile in stevel's ~/.m2/settings.xml to
+      use the asf staging reop.
+    </echo>
+    <mvn dir="${hboss.dir}">
+      <arg value="-Pasf-staging"/>
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="-Dhadoop33.version=${hadoop.version}"/>
+      <arg value="clean"/>
+      <arg value="install"/>
+    </mvn>
+  </target>
 
 
   <target name="cloudstore.build" if="cloudstore.dir"
@@ -431,6 +484,23 @@ Message is in file ${message.out}
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="clean"/>
       <arg value="package"/>
+    </mvn>
+  </target>
+
+
+  <target name="fsapi.test" if="fs-api-shim.dir"
+    depends="init"
+    description="Build and test fs-api-shim">
+    <echo>
+      Build the fs api shim module.
+      This MUST build against hadoop-3.2.0; the test version is
+      what we want here.
+    </echo>
+    <mvn dir="${fs-api-shim.dir}">
+      <arg value="-Psnapshots-and-staging"/>
+      <arg value="-Dhadoop.test.version=${hadoop.version}"/>
+      <arg value="clean"/>
+      <arg value="test"/>
     </mvn>
   </target>
 
@@ -463,6 +533,8 @@ Message is in file ${message.out}
 
   <target name="release.src.untar" depends="release.dir.check"
     description="untar the release source">
+    <echo>untarring source ${release.dir}/${release}-src.tar.gz</echo>
+    <mkdir dir="target/untar"/>
 
     <gunzip src="${release.dir}/${release}-src.tar.gz" dest="target/untar"/>
     <untar src="target/untar/${release}-src.tar" dest="${release.source.dir}" />
@@ -486,12 +558,13 @@ Message is in file ${message.out}
   </target>
 
   <target name="release.bin.untar" depends="release.dir.check"
-    description="untar the release">
+    description="untar the binary release">
 
-    <gunzip src="${release.dir}/${release}.tar.gz" dest="target/untar"/>
+    <mkdir dir="target/bin-untar" />
+    <gunzip src="${release.dir}/${release}.tar.gz" dest="target/bin-untar"/>
 
     <!--  use the native command to preserve properties -->
-    <x executable="tar" dir="target/untar" >
+    <x executable="tar" dir="target/bin-untar" >
       <arg value="-xf" />
       <arg value="${release}.tar" />
     </x>
@@ -508,14 +581,14 @@ Message is in file ${message.out}
     <presetdef name="hadoop">
       <exec failonerror="true"
         executable="bin/hadoop"
-        dir="target/untar/${release}" />
+        dir="target/bin-untar/${release}" />
     </presetdef>
 
     <!--    quiet hadoop-->
     <presetdef name="hadoopq">
       <exec failonerror="false"
         executable="bin/hadoop"
-        dir="target/untar/${release}" />
+        dir="target/bin-untar/${release}" />
     </presetdef>
     <echo>ls</echo>
     <hadoop>
