@@ -720,9 +720,6 @@ Message is in file ${message.out}
     description="build site announcement"
     depends="release.site.prepare">
 
-    <require-dir dir="${hadoop.site.dir}"/>
-    <property name="hadoop.site.content.docs"
-      location="${hadoop.site.dir}/content/docs/"/>
 
     <tstamp>
         <format property="timestamp" pattern="yyyy-MM-dd" />
@@ -739,15 +736,28 @@ Message is in file ${message.out}
 
     <echo>${announcement.txt}</echo>
     <echo file="${announcement.out}">${announcement.txt}</echo>
+    <loadfile property="user-email-announcement.txt"
+      srcFile="src/text/user-email-announcement.txt">
+      <filterchain>
+        <expandproperties/>
+      </filterchain>
+    </loadfile>
+    <property name="user-email-announcement.out"
+      location="${target}/user-email-announcement.txt"/>
 
-  <copy file="${announcement.out}"
-    tofile="${hadoop.site.dir}/src/release/${ver}.md" />
+    <echo>${user-email-announcement.txt}</echo>
+    <echo file="${user-email-announcement.out}">${user-email-announcement.txt}</echo>
+    
   </target>
 
   <target name="release.site.docs"
-      depends="release.site.prepare"
+      depends="release.site.prepare, release.site.announcement"
       description="release the site docs by copying them">
     <echo>copying site docs to ${hadoop.site.content.dest}</echo>
+    
+    <copy file="${announcement.out}"
+      tofile="${hadoop.site.dir}/src/release/${ver}.md" />
+    
     <delete dir="${hadoop.site.content.dest}"/>
     <copy todir="${hadoop.site.content.dest}"
       includeemptydirs="true">

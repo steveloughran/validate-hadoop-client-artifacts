@@ -19,7 +19,7 @@ linked: true
 
 This is a release of Apache Hadoop ${release.branch} line.
 
-It contains a small number security and critical integration fixes since ${previous.ver}.
+It contains a small number of security and critical integration fixes since ${previous.ver}.
 
 Users of Apache Hadoop ${previous.ver} should upgrade to this release.
 
@@ -32,6 +32,6 @@ Users are encouraged to read the [overview of major changes][1] since release ${
 For details of bug fixes, improvements, and other enhancements since the previous ${previous.ver} release,
 please check [release notes][2] and [changelog][3].
 
-[1]: /docs/r${ver}/index.html
+[1]: http://hadoop.apache.org/docs/r${ver}/index.html
 [2]: http://hadoop.apache.org/docs/r${ver}/hadoop-project-dist/hadoop-common/release/${ver}/RELEASENOTES.${ver}.html
 [3]: http://hadoop.apache.org/docs/r${ver}/hadoop-project-dist/hadoop-common/release/${ver}/CHANGELOG.${ver}.html
