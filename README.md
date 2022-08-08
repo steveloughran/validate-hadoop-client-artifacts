@@ -266,3 +266,31 @@ ant cloud-examples.test
 ant hboss.build
 ```
 
+## building the site
+
+set `hadoop.site.dir` to be the path to where the git
+clone of the asf site repo is
+
+```properties
+hadoop.site.dir=/Users/stevel/hadoop/release/hadoop-site\
+  ```
+
+prepare the site with the following targets
+
+```bash
+ant release.site.announcement
+ant release.site.docs
+```
+
+review the annoucement.
+
+In the 
+
+```bash
+rm current3
+ln -s r.3.3.4 current3
+ls -l
+rm stable3
+ln -s r3.3.4 stable
+ln -s r3.3.4 stable3
+```

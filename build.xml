@@ -41,15 +41,19 @@
   <property file="build.properties"/>
 
 
-  <property name="rc" value="RC0"/>
 
   <property name="dist.dir" location="${target}/dist"/>
   <property name="incoming.dir" location="${target}/incoming"/>
 
 
-  <!--  base name of a release, 3.3.4-RC0 -->
+  <!--  base name of a release, 3.3.4-->
   <property name="hadoop.version" value="3.3.4"/>
+  <property name="rc" value="RC0"/>
   <property name="rc.name" value="${hadoop.version}-${rc}"/>
+
+ <!--  previous version, used in annoucements -->
+  <property name="previous.ver" value="3.3.3"/>
+  <property name="release.branch" value="3.3"/>
 
   <!-- for spark builds -->
   <property name="spark.version" value="3.4.0-SNAPSHOT"/>
@@ -70,6 +74,8 @@
     value=""/>-->
   <property name="release.untar.dir" location="${target}/untar"/>
   <property name="release.source.dir" location="${release.untar.dir}/source"/>
+  <property name="release.site.dir" location="${release.untar.dir}/site"/>
+  <property name="site.dir" location="${release.untar.dir}/site/r${hadoop.version}"/>
   <property name="release.bin.dir" location="${release.untar.dir}/bin"/>
   <property name="release.native.binaries" value="true"/>
 
@@ -119,6 +125,9 @@
 
     <property name="scp.source"
       value="${scp.user}@${scp.hostname}:${scp.hadoop.dir}/target/artifacts"/>
+
+    <property name="site.dir"
+      value="${release.source.dir}/${release}-src"/>
 
     <echo>
       hadoop.version=${hadoop.version}
@@ -320,7 +329,7 @@
     </fail>
 
     <loadfile property="message.txt"
-      srcFile="src/email.txt">
+      srcFile="src/text/email.txt">
       <filterchain>
         <expandproperties/>
       </filterchain>
@@ -531,6 +540,15 @@ Message is in file ${message.out}
       tofile="${release.dir}"/>
   </target>
 
+  <target name="release.site.untar" depends="release.dir.check"
+    description="untar the release site">
+    <echo>untarring site ${release.dir}/${release}-site.tar.gz</echo>
+    <mkdir dir="target/untar"/>
+
+    <gunzip src="${release.dir}/${release}-site.tar.gz" dest="target/untar"/>
+    <untar src="target/untar/${release}-site.tar" dest="${release.site.dir}" />
+  </target>
+
   <target name="release.src.untar" depends="release.dir.check"
     description="untar the release source">
     <echo>untarring source ${release.dir}/${release}-src.tar.gz</echo>
@@ -612,4 +630,131 @@ Message is in file ${message.out}
     </hadoopq>
 
   </target>
+
+  <target name="release.copy.init" depends="release.dir.check" >
+    <!--    destination dir-->
+    <require-dir dir="${hadoop.source.dir}"/>
+    <property name="ver" value="${hadoop.version}"/>
+    <require-dir dir="${release.dir}"/>
+  </target>
+
+
+  <target name="release.copy.changelog" depends="release.copy.init"
+    description="copy changelog and release">
+    <!--    destination dir-->
+    <require-dir dir="${hadoop.source.dir}"/>
+    <echo>
+      copying release notes to ${hadoop.source.dir}.
+      Check out the target branch for the updates first.
+    </echo>
+    <property name="release.notes.dir"
+      location="${hadoop.source.dir}/hadoop-common-project/hadoop-common/src/site/markdown/release/${ver}"/>
+    <mkdir dir="${release.notes.dir}"/>
+    <copy file="${release.dir}/RELEASENOTES.md"
+      tofile="${release.notes.dir}/RELEASENOTES.${ver}.md"/>
+    <copy file="${release.dir}/CHANGELOG.md"
+      tofile="${release.notes.dir}/CHANGELOG.${ver}.md"/>
+  </target>
+
+  <target name="release.copy.jdiff" depends="release.copy.init"
+    description="copy jdiff">
+    <!--    destination dir-->
+    <require-dir dir="${hadoop.source.dir}"/>
+    <echo>
+      copying jdiff files to ${hadoop.source.dir}.
+      Check out the target branch for the updates first.
+    </echo>
+    <!-- find target/untar -name "Apache_Hadoop_*_$ver.xml" -->
+    <x executable="find" dir="${site.dir}" >
+      <arg value="." />
+      <arg value="-name" />
+      <arg value="Apache_Hadoop_*_${ver}.xml" />
+    </x>
+
+    <property name="yarn.jdiff.dest"
+      location="${hadoop.source.dir}/hadoop-yarn-project/hadoop-yarn/dev-support/jdiff"/>
+
+    <copy todir="${yarn.jdiff.dest}" >
+      <fileset file="${site.dir}/hadoop-yarn/hadoop-yarn-api/jdiff/xml/Apache_Hadoop_YARN_API_${ver}.xml"/>
+      <fileset file="${site.dir}/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-common/jdiff/xml/Apache_Hadoop_YARN_Server_Common_${ver}.xml"/>
+      <fileset file="${site.dir}/hadoop-yarn/hadoop-yarn-common/jdiff/xml/Apache_Hadoop_YARN_Common_${ver}.xml"/>
+      <fileset file="${site.dir}/hadoop-yarn/hadoop-yarn-client/jdiff/xml/Apache_Hadoop_YARN_Client_${ver}.xml"/>
+    </copy>
+
+     <copy
+       file="${site.dir}/hadoop-project-dist/hadoop-common/jdiff/xml/Apache_Hadoop_Common_${ver}.xml"
+       todir="${hadoop.source.dir}/hadoop-common-project/hadoop-common/dev-support/jdiff/"/>
+
+     <copy
+       file="${site.dir}/hadoop-project-dist/hadoop-hdfs/jdiff/xml/Apache_Hadoop_HDFS_${ver}.xml"
+       todir="${hadoop.source.dir}/hadoop-hdfs-project/hadoop-hdfs/dev-support/jdiff/"/>
+
+
+    <copy todir="${hadoop.source.dir}/hadoop-mapreduce-project/dev-support/jdiff/">
+      <fileset file="${site.dir}/hadoop-mapreduce-client/hadoop-mapreduce-client-common/jdiff/xml/Apache_Hadoop_MapReduce_Common_${ver}.xml"/>
+      <fileset file="${site.dir}/hadoop-mapreduce-client/hadoop-mapreduce-client-core/jdiff/xml/Apache_Hadoop_MapReduce_Core_${ver}.xml"/>
+      <fileset file="${site.dir}/hadoop-mapreduce-client/hadoop-mapreduce-client-jobclient/jdiff/xml/Apache_Hadoop_MapReduce_JobClient_${ver}.xml"/>
+    </copy>
+
+
+
+  </target>
+
+  <target name="release.site.prepare"
+    depends="release.copy.init">
+
+    <require-dir dir="${hadoop.site.dir}"/>
+    <property name="hadoop.site.content.docs"
+      location="${hadoop.site.dir}/content/docs/"/>
+
+    <property name="hadoop.site.content.dest"
+      location="${hadoop.site.content.docs}/r${ver}"/>
+
+
+    <tstamp>
+      <format property="timestamp" pattern="yyyy-MM-dd" />
+    </tstamp>
+  </target>
+
+  <target name="release.site.announcement"
+    description="build site announcement"
+    depends="release.site.prepare">
+
+    <require-dir dir="${hadoop.site.dir}"/>
+    <property name="hadoop.site.content.docs"
+      location="${hadoop.site.dir}/content/docs/"/>
+
+    <tstamp>
+        <format property="timestamp" pattern="yyyy-MM-dd" />
+    </tstamp>
+
+    <loadfile property="announcement.txt"
+      srcFile="src/text/announcement.txt">
+      <filterchain>
+        <expandproperties/>
+      </filterchain>
+    </loadfile>
+    <property name="announcement.out"
+      location="${target}/announcement.txt"/>
+
+    <echo>${announcement.txt}</echo>
+    <echo file="${announcement.out}">${announcement.txt}</echo>
+
+  <copy file="${announcement.out}"
+    tofile="${hadoop.site.dir}/src/release/${ver}.md" />
+  </target>
+
+  <target name="release.site.docs"
+      depends="release.site.prepare"
+      description="release the site docs by copying them">
+    <echo>copying site docs to ${hadoop.site.content.dest}</echo>
+    <delete dir="${hadoop.site.content.dest}"/>
+    <copy todir="${hadoop.site.content.dest}"
+      includeemptydirs="true">
+      <fileset dir="${site.dir}"/>
+    </copy>
+
+  </target>
+
+
 </project>
