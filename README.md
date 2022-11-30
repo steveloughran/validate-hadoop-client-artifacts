@@ -58,7 +58,9 @@ cloud.test.configuration.file=/Users/stevel/Projects/config/cloud-test-configs/s
 bigdata-interop.dir=/Users/stevel/Projects/gcs/bigdata-interop
 hboss.dir=/Users/stevel/Projects/hbasework/hbase-filesystem
 cloudstore.dir=/Users/stevel/Projects/cloudstore
-hadoop.version=3.3.4
+fs-api-shim.dir=/Users/stevel/Projects/Formats/fs-api-shim/
+hadoop.version=3.3.5
+git.commit.id=99c5802280b
 rc=0
 ```
 

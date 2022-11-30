@@ -46,22 +46,22 @@
   <property name="incoming.dir" location="${target}/incoming"/>
 
 
-  <!--  base name of a release, 3.3.4-->
-  <property name="hadoop.version" value="3.3.4"/>
+  <!--  base name of a release -->
+  <property name="hadoop.version" value="3.3.5"/>
   <property name="rc" value="RC0"/>
   <property name="rc.name" value="${hadoop.version}-${rc}"/>
 
  <!--  previous version, used in annoucements -->
-  <property name="previous.ver" value="3.3.3"/>
+  <property name="previous.ver" value="3.3.4"/>
   <property name="release.branch" value="3.3"/>
 
   <!-- for spark builds -->
   <property name="spark.version" value="3.4.0-SNAPSHOT"/>
   <!--  spark excludes hadoop-aws dependency and forces in their own
-        this fixes it to be in sync with hadoop 3.3.4 RC1
+        this fixes it to be in sync with hadoop
         see https://issues.apache.org/jira/browse/SPARK-39969
    -->
-  <property name="spark.aws.version" value="1.12.262"/>
+  <property name="spark.aws.version" value="1.12.316"/>
 
 
   <property name="release" value="hadoop-${hadoop.version}"/>
@@ -450,6 +450,7 @@ Message is in file ${message.out}
       use the asf staging reop.
     </echo>
     <mvn dir="${hboss.dir}">
+      <arg value="-T 1C"/>
       <arg value="-Pasf-staging"/>
       <arg value="-DskipTests"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
@@ -470,6 +471,7 @@ Message is in file ${message.out}
       use the asf staging reop.
     </echo>
     <mvn dir="${hboss.dir}">
+      <arg value="-T 1C"/>
       <arg value="-Pasf-staging"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="-Dhadoop33.version=${hadoop.version}"/>
@@ -488,6 +490,7 @@ Message is in file ${message.out}
 
     </echo>
     <mvn dir="${cloudstore.dir}">
+      <arg value="-T 1C"/>
       <arg value="-Psnapshots-and-staging"/>
       <arg value="-Pextra"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
