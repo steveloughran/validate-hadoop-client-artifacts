@@ -36,7 +36,7 @@
     <maven-antrun-plugin.version>1.7</maven-antrun-plugin.version>
 
 
-    <hadoop.version>3.3.4</hadoop.version>
+    <hadoop.version>3.3.5</hadoop.version>
 
     <!-- SLF4J/LOG4J version -->
     <slf4j.version>1.7.36</slf4j.version>
@@ -151,9 +151,9 @@
       </repositories>
     </profile>
     <profile>
-      <id>hadoop-3.3.4</id>
+      <id>hadoop-3.3.5</id>
       <properties>
-        <hadoop.version>3.3.4</hadoop.version>
+        <hadoop.version>3.3.5</hadoop.version>
       </properties>
     </profile>
 
@@ -167,7 +167,7 @@
     <profile>
       <id>branch-3.3</id>
       <properties>
-        <hadoop.version>3.3.4-SNAPSHOT</hadoop.version>
+        <hadoop.version>3.3.9-SNAPSHOT</hadoop.version>
       </properties>
     </profile>
 

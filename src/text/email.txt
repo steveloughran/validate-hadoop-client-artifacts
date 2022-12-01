@@ -1,6 +1,13 @@
 [VOTE] Release Apache Hadoop ${hadoop.version}
+Smoke test release release Apache Hadoop ${hadoop.version}
 
-I have put together a release candidate (${rc}) for Hadoop ${hadoop.version}
+Mukund and I have put together a release candidate (${rc}) for Hadoop ${hadoop.version}.
+
+This isn't quite ready for a vote as we know there are a couple of fixes to go in
+(one for abfs, one for hadoop-hdfs-nfs).
+
+What we would like is for anyone who can to verify the tarballs, especially
+anyone who can try the arm64 binaries as we want to include them too.
 
 The RC is available at:
 https://dist.apache.org/repos/dist/dev/hadoop/${rc-dirname}/
@@ -13,15 +20,26 @@ ${nexus.staging.url}
 You can find my public key at:
 https://dist.apache.org/repos/dist/release/hadoop/common/KEYS
 
+Mukund doesn't have one as gpg refuses to work on his laptop.
+
 Change log
 https://dist.apache.org/repos/dist/dev/hadoop/${rc-dirname}/CHANGELOG.md
 
 Release notes
 https://dist.apache.org/repos/dist/dev/hadoop/${rc-dirname}/RELEASENOTES.md
 
-There's a very small number of changes, primarily critical code/packaging
-issues and security fixes.
+This is off branch-3.3 and is the first big release since 3.3.2.
 
 See the release notes for details.
+
+Key changes
+
+* Big update of dependencies to try and keep those reports of
+  transitive CVEs under control.
+* Vectored IO API for all FSDataInputStream implementations, with
+  high-performance versions for file:// and s3a:// filesystems.
+  file:// through java native io
+  s3a:// parallel GET requests.
+
 
 Please try the release and vote. The vote will run for 5 days.

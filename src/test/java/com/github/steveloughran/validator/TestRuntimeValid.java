@@ -29,6 +29,5 @@ public class TestRuntimeValid {
   public void testRuntime() throws Throwable {
     final CompileFS compileFS = new CompileFS();
     compileFS.run();
-
   }
 }

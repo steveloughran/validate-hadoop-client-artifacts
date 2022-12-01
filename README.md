@@ -1,5 +1,5 @@
 # Validate Hadoop Release Artifacts
-l
+
 This project helps validate hadoop release candidates
 
 It has an ant `build.xml` file to help with preparing the release,
@@ -8,8 +8,6 @@ validating gpg signatures, creating release messages and other things.
 # ant builds
 
 see below
-
-
 
 # maven builds
 
@@ -66,7 +64,6 @@ rc=0
 
 ### Clean up first
 
-
 ```bash
 ant clean
 ```
@@ -86,16 +83,13 @@ This will take a while! look in target/incoming for progress
 ant scp-artifacts
 ```
 
-
 ### Move to the release dir
-
 
 ```bash
 ant move-scp-artifacts release.dir.check
 ```
 
 ### verify gpg signing
-
 
 ```bash
 ant gpg.keys gpg.verify
@@ -109,6 +103,10 @@ https://svn.apache.org URL.
 ```bash
 ant stage
 ```
+
+This makes it visible to others via the apache svn site, but it
+is not mirrored yet.
+
 When the RC is released, an `svn move` operation can promote it
 directly.
 
@@ -136,7 +134,6 @@ ant print-tag-command
 2. Find the hadoop repo for the RC
 3. "close" it and wait for that to go through
 
-
 ### Generate the RC vote email
 
 Review/update template message in `src/email.txt`.
@@ -160,24 +157,23 @@ locally.
 In build properties, declare `hadoop.version`, `rc` and `http.source`
 
 ```properties
-hadoop.version=3.3.4
+hadoop.version=3.3.5
 rc=1
-http.source=https://dist.apache.org/repos/dist/dev/hadoop/hadoop-3.3.4-RC1/
+http.source=https://dist.apache.org/repos/dist/dev/hadoop/hadoop-${hadoop.version}-RC${rc}/
 ```
 
 targets of relevance
 
 | target             | action                     |
 |--------------------|----------------------------|
-| release.fetch.http | fetch artifacts            |
-| release.dir.check  | verify release dir exists  |
-| release.src.untar  | untar retrieved artifacts  |
-| release.src.build  | build the source           |
-| release.src.test   | build and test the source  |
-| gpg.keys           | import the hadoop KEYS     |
-| gpg.verify         | verify the D/L'd artifacts |
+| `release.fetch.http` | fetch artifacts            |
+| `release.dir.check`  | verify release dir exists  |
+| `release.src.untar`  | untar retrieved artifacts  |
+| `release.src.build`  | build the source           |
+| `release.src.test`   | build and test the source  |
+| `gpg.keys`           | import the hadoop KEYS     |
+| `gpg.verify `        | verify the D/L'd artifacts |
 |                    |                            |
-
 
 set `release.native.binaries` to false to skip native binary checks on platforms without them
 
@@ -197,14 +193,14 @@ do not do this while building/testing downstream projects
 ant release.src.untar release.src.build
 ```
 
-
 # Building and testing projects from the staged maven artifacts
 
 A lot of the targets build maven projects from the staged maven artifacts.
 
 For this to work
+
 1. check out the relevant projects somewhere
-2. set their location in the build.properties file
+2. set their location in the `build.properties` file
 3. make sure that the branch checked out is the one you want to build.
    This matters for anyone who works on those other projects
    on their own branches.
@@ -212,7 +208,6 @@ For this to work
 
 First, purge your maven repo
 
-    
 ```bash
 ant purge-from-maven
 ```
@@ -228,9 +223,8 @@ ant cloudstore.build
 ## Google GCS
 
 This is java11 only.
- 
-Ideally, you should run the tests, or even better, run them before the RC is up for review.
 
+Ideally, you should run the tests, or even better, run them before the RC is up for review.
 
 Building the libraries.
 Do this only if you aren't running the tests.
@@ -239,30 +233,22 @@ Do this only if you aren't running the tests.
 ant gcs.build
 ```
 
-Testing the libraries
-```
-ant gcs.build
-```
-
-
-
 ## Apache Spark
 
 Validates hadoop client artifacts; the cloud tests cover hadoop cloud storage clients.
-
 
 ```bash
 ant spark.build
 ```
 
 Then followup cloud examples if you are set up
+
 ```bash
 ant cloud-examples.build
 ant cloud-examples.test
 ```
 
 ## HBase filesystem
-
 
 ```bash
 ant hboss.build
@@ -274,8 +260,8 @@ set `hadoop.site.dir` to be the path to where the git
 clone of the asf site repo is
 
 ```properties
-hadoop.site.dir=/Users/stevel/hadoop/release/hadoop-site\
-  ```
+hadoop.site.dir=/Users/stevel/hadoop/release/hadoop-site
+```
 
 prepare the site with the following targets
 
@@ -286,13 +272,13 @@ ant release.site.docs
 
 review the annoucement.
 
-In the 
+In the hadoop site dir
 
 ```bash
 rm current3
-ln -s r.3.3.4 current3
+ln -s r.3.3.5 current3
 ls -l
 rm stable3
-ln -s r3.3.4 stable
-ln -s r3.3.4 stable3
+ln -s r3.3.5 stable
+ln -s r3.3.5 stable3
 ```

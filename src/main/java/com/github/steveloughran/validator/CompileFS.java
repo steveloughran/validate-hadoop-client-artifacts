@@ -35,7 +35,7 @@ public class CompileFS {
 
   public FileSystem run() throws IOException {
     final FileSystem fs = FileSystem.getLocal(new Configuration());
-    LOG.info("fs is {)", fs);
+    LOG.info("fs is {}", fs);
     return fs;
   }
   public static void main(String[] args) throws Exception {
