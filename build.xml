@@ -42,8 +42,9 @@
 
 
 
-  <property name="dist.dir" location="${target}/dist"/>
-  <property name="incoming.dir" location="${target}/incoming"/>
+  <property name="downloads.dir" location="downloads"/>
+  <property name="dist.dir" location="${downloads.dir}/dist"/>
+  <property name="incoming.dir" location="${downloads.dir}/incoming"/>
 
 
   <!--  base name of a release -->
@@ -66,13 +67,13 @@
 
   <property name="release" value="hadoop-${hadoop.version}"/>
   <property name="rc-dirname" value="${release}-${rc}"/>
-  <property name="release.dir" location="${target}/${rc-dirname}"/>
+  <property name="release.dir" location="${downloads.dir}/${rc-dirname}"/>
   <property name="staged.artifacts.dir" location="${staging.dir}/${rc.name}"/>
 
   <property name="tag.name" value="release-${rc.name}"/>
 <!--  <property name="nexus.staging.url"
     value=""/>-->
-  <property name="release.untar.dir" location="${target}/untar"/>
+  <property name="release.untar.dir" location="${downloads.dir}/untar"/>
   <property name="release.source.dir" location="${release.untar.dir}/source"/>
   <property name="release.site.dir" location="${release.untar.dir}/site"/>
   <property name="site.dir" location="${release.untar.dir}/site/r${hadoop.version}"/>
@@ -121,7 +122,7 @@
     </macrodef>
 
 
-    <mkdir dir="${target}"/>
+    <mkdir dir="${downloads.dir}"/>
 
     <property name="scp.source"
       value="${scp.user}@${scp.hostname}:${scp.hadoop.dir}/target/artifacts"/>
@@ -161,6 +162,7 @@
     description="clean up target/ dir">
     <!-- Delete the ${dist} directory trees -->
     <delete dir="${target}"/>
+    <delete dir="${downloads.dir}"/>
   </target>
 
   <target name="ant">
@@ -452,11 +454,11 @@ Message is in file ${message.out}
     <mvn dir="${hboss.dir}">
       <arg value="-T 1C"/>
       <arg value="-Pasf-staging"/>
-      <arg value="-DskipTests"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="-Dhadoop33.version=${hadoop.version}"/>
       <arg value="clean"/>
       <arg value="install"/>
+      <arg value="-DskipTests"/>
     </mvn>
   </target>
   <target name="hboss.test" if="hboss.dir"
@@ -513,6 +515,57 @@ Message is in file ${message.out}
       <arg value="-Dhadoop.test.version=${hadoop.version}"/>
       <arg value="clean"/>
       <arg value="test"/>
+    </mvn>
+  </target>
+
+  <target name="parquet.build" if="parquet.dir"
+    depends="init"
+    description="Build parquet">
+    <echo>
+      Build the parquet jars.
+      There's no profile for using ASF staging as a source for artifacts.
+      Run this after other builds so the files are already present
+    </echo>
+    <mvn dir="${parquet.dir}">
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="-Pasf-staging"/>
+      <arg value="--pl"/>
+      <arg value="parquet-hadoop"/>
+      <arg value="clean"/>
+      <arg value="install"/>
+      <arg value="-DskipTests"/>
+    </mvn>
+  </target>
+
+  <target name="parquet.test" if="parquet.dir"
+    depends="init"
+    description="Build and test the parquet-hadoop module">
+    <echo>
+      Build and test parquet-hadoop.
+      There's no profile for using ASF staging as a source for artifacts.
+      Run this after other builds so the files are already present
+    </echo>
+    <mvn dir="${parquet.dir}">
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="--pl"/>
+      <arg value="parquet-hadoop"/>
+      <arg value="install"/>
+    </mvn>
+  </target>
+
+  <target name="avro.build" if="avro.dir"
+    depends="init"
+    description="Build avro">
+    <echo>
+      Build avro.
+      Relies on the user having an asf-staging profile.
+    </echo>
+    <mvn dir="${avro.dir}/lang/java">
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="-Pasf-staging"/>
+      <arg value="clean"/>
+      <arg value="install"/>
+      <arg value="-DskipTests"/>
     </mvn>
   </target>
 

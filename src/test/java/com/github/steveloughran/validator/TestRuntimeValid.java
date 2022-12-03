@@ -20,6 +20,10 @@ package com.github.steveloughran.validator;
 
 import org.junit.Test;
 
+import org.apache.hadoop.fs.azurebfs.AzureBlobFileSystem;
+import org.apache.hadoop.fs.s3a.S3AFileSystem;
+import org.apache.hadoop.hdfs.DistributedFileSystem;
+
 /**
  * Let's test that runtime.
  */
@@ -30,4 +34,19 @@ public class TestRuntimeValid {
     final CompileFS compileFS = new CompileFS();
     compileFS.run();
   }
+
+  @Test
+  public void testS3AConstructor() throws Throwable {
+    new S3AFileSystem();
+  }
+
+  @Test
+  public void testHDFSConstructor() throws Throwable {
+    new DistributedFileSystem();
+  }
+  @Test
+  public void testABFSConstructor() throws Throwable {
+    new AzureBlobFileSystem();
+  }
+
 }

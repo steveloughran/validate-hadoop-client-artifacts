@@ -158,14 +158,14 @@ In build properties, declare `hadoop.version`, `rc` and `http.source`
 
 ```properties
 hadoop.version=3.3.5
-rc=1
+rc=0
 http.source=https://dist.apache.org/repos/dist/dev/hadoop/hadoop-${hadoop.version}-RC${rc}/
 ```
 
 targets of relevance
 
-| target             | action                     |
-|--------------------|----------------------------|
+| target               | action                     |
+|----------------------|----------------------------|
 | `release.fetch.http` | fetch artifacts            |
 | `release.dir.check`  | verify release dir exists  |
 | `release.src.untar`  | untar retrieved artifacts  |
@@ -173,7 +173,7 @@ targets of relevance
 | `release.src.test`   | build and test the source  |
 | `gpg.keys`           | import the hadoop KEYS     |
 | `gpg.verify `        | verify the D/L'd artifacts |
-|                    |                            |
+|                      |                            |
 
 set `release.native.binaries` to false to skip native binary checks on platforms without them
 
@@ -199,9 +199,9 @@ A lot of the targets build maven projects from the staged maven artifacts.
 
 For this to work
 
-1. check out the relevant projects somewhere
-2. set their location in the `build.properties` file
-3. make sure that the branch checked out is the one you want to build.
+1. Check out the relevant projects somewhere
+2. Set their location in the `build.properties` file
+3. Make sure that the branch checked out is the one you want to build.
    This matters for anyone who works on those other projects
    on their own branches.
 4. Some projects need java11.
@@ -214,22 +214,27 @@ ant purge-from-maven
 
 ## Cloudstore
 
+[cloudstore](https://github.com/steveloughran/cloudstore).
+
 No tests, sorry.
 
-```
+```bash
 ant cloudstore.build
 ```
 
 ## Google GCS
 
-This is java11 only.
+
+[Big Data Interop](https://github.com/GoogleCloudPlatform/bigdata-interop).
+
+This is java 11+ only.
 
 Ideally, you should run the tests, or even better, run them before the RC is up for review.
 
 Building the libraries.
 Do this only if you aren't running the tests.
 
-```
+```bash
 ant gcs.build
 ```
 
@@ -241,8 +246,14 @@ Validates hadoop client artifacts; the cloud tests cover hadoop cloud storage cl
 ant spark.build
 ```
 
-Then followup cloud examples if you are set up
+### Spark cloud integration tests
 
+Then followup cloud integration tests if you are set up to build.
+Spark itself does not include any integration tests of the object store connectors.
+This independent module tests the s3a, gcs and abfs connectors,
+and associated committers, through the spark RDD and SQL APIs.
+
+[cloud integration](https://github.com/hortonworks-spark/cloud-integration)
 ```bash
 ant cloud-examples.build
 ant cloud-examples.test
@@ -250,35 +261,118 @@ ant cloud-examples.test
 
 ## HBase filesystem
 
+[hbase-filesystem](https://github.com/apache/hbase-filesystem.git)
+
+Adds zookeeper-based locking on those filesystem API calls for which
+atomic access is required.
+
+Integration tests will go through S3A connector.
+
 ```bash
 ant hboss.build
 ```
 
-## building the site
+## building the Hadoop site
 
-set `hadoop.site.dir` to be the path to where the git
-clone of the asf site repo is
+Set `hadoop.site.dir` to be the path to where the git
+clone of the ASF site repo is
 
 ```properties
 hadoop.site.dir=/Users/stevel/hadoop/release/hadoop-site
 ```
 
-prepare the site with the following targets
+Prepare the site with the following targets
 
 ```bash
 ant release.site.announcement
 ant release.site.docs
 ```
 
-review the annoucement.
+Review the annoucement.
+
+### Manually link the current/stable symlinks to the new release
 
 In the hadoop site dir
 
 ```bash
+
+# review current status
+ls -l
+
+# symlink current
 rm current3
 ln -s r.3.3.5 current3
-ls -l
+
+# symlink stable
 rm stable3
 ln -s r3.3.5 stable
 ln -s r3.3.5 stable3
+
+# review new status
+ls -l
+```
+
+Finally, *commit*
+
+## Adding a global staging profile `asf-staging`
+
+Many projects have a profile to use a staging repository, especially the ASF one.
+
+Not all do -these builds are likely to fail.
+Here is a profile, `asf-staging` which can be used to enable this.
+The paths to the repository can be changed too, if desired.
+
+Some of the maven builds invoked rely on this profile (e.g. avro).
+For some unknown reason the parquet build doesn't seem to cope.
+
+```xml
+ <profile>
+  <id>asf-staging</id>
+  <properties>
+    <!-- override point for ASF staging/snapshot repos -->
+    <asf.staging>https://repository.apache.org/content/groups/staging/</asf.staging>
+    <asf.snapshots>https://repository.apache.org/content/repositories/snapshots/</asf.snapshots>
+  </properties>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>ASF Staging</id>
+      <url>${asf.staging}</url>
+    </pluginRepository>
+    <pluginRepository>
+      <id>ASF Snapshots</id>
+      <url>${asf.snapshots}</url>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+    </pluginRepository>
+
+  </pluginRepositories>
+  <repositories>
+    <repository>
+      <id>ASF Staging</id>
+      <url>${asf.staging}</url>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+    </repository>
+    <repository>
+      <id>ASF Snapshots</id>
+      <url>${asf.snapshots}</url>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+    </repository>
+  </repositories>
+</profile>
+
 ```
