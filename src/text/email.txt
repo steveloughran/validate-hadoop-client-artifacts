@@ -35,11 +35,13 @@ See the release notes for details.
 Key changes
 
 * Big update of dependencies to try and keep those reports of
-  transitive CVEs under control.
+  transitive CVEs under control -both genuine and false positive.
 * Vectored IO API for all FSDataInputStream implementations, with
   high-performance versions for file:// and s3a:// filesystems.
   file:// through java native io
   s3a:// parallel GET requests.
+* This release includes arm64 binaries. Please can anyone with
+  compatible systems validate these.
 
 
 Please try the release and vote. The vote will run for 5 days.

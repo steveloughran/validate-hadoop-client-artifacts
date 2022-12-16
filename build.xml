@@ -353,17 +353,24 @@ Message is in file ${message.out}
     description="build the spark release in spark.dir">
     <echo>
 
-      Note: this build includes kinesis and ASL artifacts
+      Note: this build includes kinesis and hadoop cloud artifacts;
+      builds the full tarball in assembly/target which can be used for
+      spark-standalone and cluster testing.
+
+      Note, SPARK-41392 highlights some build problems on trunk;
+      until fixed expect failures to occur on the trunk branch.
+      the branch-3.3 line MUST work to qualify the build.
     </echo>
     <mvn dir="${spark.dir}">
       <arg value="-Psnapshots-and-staging"/>
-      <arg value="-Phadoop-cloud"/>
+      <arg value="-Phadoop-cloud"/>  <!-- cloud module -->
       <arg value="-Pyarn"/>
-      <arg value="-Pkinesis-asl"/>
+      <arg value="-Pkinesis-asl"/>  <!-- kinesis -->
+      <arg value="-Pbigtop-dist"/>  <!-- build the distribution -->
       <arg value="-DskipTests"/>
       <arg value="-Dmaven.javadoc.skip=true"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
-      <arg value="-Daws.java.sdk.version=${spark.aws.version}"/>
+      <arg value="-Daws.java.sdk.version=${spark.aws.version}"/> <!-- kinesis module to use the same aws jar-->
       <arg value="clean"/>
       <arg value="install"/>
     </mvn>
@@ -375,19 +382,30 @@ Message is in file ${message.out}
     depends="init"
     description="build the cloud examples release">
     <echo>
-      Build the cloud examples modules
+      Build the cloud examples;
+      spark MUST have been built against this release first.
     </echo>
-
+    <mvn dir="${cloud-examples.dir}">
+      <arg value="-Psnapshots-and-staging"/>
+      <arg value="-Dspark-3.4"/>
+      <arg value="-Dspark.version=${spark.version}"/>
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="clean"/>
+      <arg value="install"/>
+      <arg value="-DskipTests"/>
+    </mvn>
   </target>
 
 
   <target name="cloud-examples.test"
     if="cloud-examples.dir"
-    depends="init"
+    depends="cloud-examples.build"
     description="test the cloud examples">
     <echo>
       Test the cloud examples;
-      cloud.test.configuration.file must point to the xml file with binding info
+      1. cloud.test.configuration.file MUST point to the xml file with binding info.
+      2. spark MUST have been built against this release first.
+      3. Java 11+ only.
     </echo>
     <require p="cloud.test.configuration.file" />
     <mvn dir="${cloud-examples.dir}">
@@ -396,7 +414,6 @@ Message is in file ${message.out}
       <arg value="-Dspark.version=${spark.version}"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="-Dcloud.test.configuration.file=${cloud.test.configuration.file}"/>
-      <arg value="clean"/>
       <arg value="test"/>
     </mvn>
   </target>
