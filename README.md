@@ -58,7 +58,7 @@ hboss.dir=/Users/stevel/Projects/hbasework/hbase-filesystem
 cloudstore.dir=/Users/stevel/Projects/cloudstore
 fs-api-shim.dir=/Users/stevel/Projects/Formats/fs-api-shim/
 hadoop.version=3.3.5
-git.commit.id=99c5802280b
+git.commit.id=3262495904d
 rc=0
 ```
 
@@ -83,11 +83,40 @@ This will take a while! look in target/incoming for progress
 ant scp-artifacts
 ```
 
-### Move to the release dir
+### Copy to the release dir
+
+Copies the files from `downloads/incoming/artifacts` to `downloads/hadoop-$version-$rc`'
 
 ```bash
-ant move-scp-artifacts release.dir.check
+ant copy-scp-artifacts release.dir.check
 ```
+
+
+
+### Arm64 binaries
+
+If arm64 binaries are being created then they must be
+built on an arm docker image.
+Do not do this at the same time as building the x86 binaries
+because both builds will generate staging repositories on
+nexus. Instead: run the arm one first and drop its artifacts
+on nexus before doing the x86 one. That will ensure that
+it is the JAR files created on the x86 build are the ones
+publised on maven.
+
+The arm process is one of
+1. Create the full set of artifacts on an arm machine (macbook, cloud vm, ...)
+2. Drop the mvn repository from nexus
+3. Use the ant build to copy and rename the .tar.gz with the native binaries only
+4. Copy and rename the .asc file
+5. Generate new sha512 checksum file containing the new name.
+6. Move these files into the downloads/release dir
+
+To perform stages 3-6:
+```bash
+ant arm.copy.artifacts arm.release
+```
+
 
 ### verify gpg signing
 
@@ -97,9 +126,18 @@ ant gpg.keys gpg.verify
 
 ### copy to a staging location in the hadoop SVN repository.
 
-When committed to svn it will be uploaded and accessible via an
+When committed to subversion it will be uploaded and accessible via a
 https://svn.apache.org URL.
 
+
+*do this after preparing the arm64 binaries*
+
+Final review of the release files
+```bash
+ant release.dir.check
+```
+
+Now stage
 ```bash
 ant stage
 ```
@@ -114,11 +152,21 @@ directly.
 
 This is not part of the tool. Can take a while...exit any VPN for extra speed.
 
+#### Manual
 ```bash
+cd $staging-dir
 svn update
 svn add <RC directory name>
-svn commit 
+svn commit
 ```
+
+#### Ant
+
+```bash
+ant stage-to-svn
+```
+
+
 
 ### tag the rc and push to github
 
@@ -128,7 +176,7 @@ This isn't automated as it needs to be done in the source tree.
 ant print-tag-command
 ```
 
-### Prepare for the email
+### Prepare the maven repository
 
 1. Go to https://repository.apache.org/#stagingRepositories
 2. Find the hadoop repo for the RC
@@ -136,14 +184,14 @@ ant print-tag-command
 
 ### Generate the RC vote email
 
-Review/update template message in `src/email.txt`.
+Review/update template message in `src/text/vote.txt`.
 All ant properties referenced will be expanded if set.
 
 ```bash
 ant vote-message
 ```
 
-The message is printed and saved to the file `target/email.txt`
+The message is printed and saved to the file `target/vote.txt`
 
 *do not send it until you have validated the URLs resolve*
 
@@ -212,6 +260,13 @@ First, purge your maven repo
 ant purge-from-maven
 ```
 
+## client validator maven
+
+
+```bash
+ant mvn-test
+```
+
 ## Cloudstore
 
 [cloudstore](https://github.com/steveloughran/cloudstore).
@@ -274,8 +329,9 @@ ant hboss.build
 
 ## building the Hadoop site
 
-Set `hadoop.site.dir` to be the path to where the git
-clone of the ASF site repo is
+Set `hadoop.site.dir` to be the path of the
+local clone of the ASF site repository
+https://gitbox.apache.org/repos/asf/hadoop-site.git
 
 ```properties
 hadoop.site.dir=/Users/stevel/hadoop/release/hadoop-site
@@ -310,6 +366,12 @@ ln -s r3.3.5 stable3
 
 # review new status
 ls -l
+```
+
+note, there are a lot of files, and if your shell has a prompt which shoes the git repo state, scanning can take a long time.
+Disable it, such as for fish:
+```fish
+set -e __fish_git_prompt_showdirtystate
 ```
 
 Finally, *commit*
