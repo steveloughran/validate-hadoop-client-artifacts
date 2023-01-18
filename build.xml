@@ -119,22 +119,36 @@
     </presetdef>
 
 
+    <!-- require a dir to exist. -->
     <macrodef name="require-dir">
-      <attribute name="dir" />
+      <attribute name="path" />
         <sequential>
-          <fail message="dir missing: @{dir}">
+          <fail message="dir missing: @{path}">
             <condition>
               <not>
-                <available file="@{dir}"/>
+                <available file="@{path}"/>
               </not>
             </condition>
           </fail>
+        </sequential>
+    </macrodef>
 
+    <!-- require a file to exist -->
+    <macrodef name="require-file">
+      <attribute name="path" />
+        <sequential>
+          <fail message="file missing: @{path}">
+            <condition>
+              <not>
+                <available file="@{path}"/>
+              </not>
+            </condition>
+          </fail>
         </sequential>
     </macrodef>
 
     <presetdef name="verify-release-dir">
-      <require-dir dir="${release.dir}" />
+      <require-dir path="${release.dir}" />
     </presetdef>
 
     <macrodef name="require">
@@ -761,16 +775,16 @@ Message is in file ${message.out}
 
   <target name="release.copy.init" depends="release.dir.check" >
     <!--    destination dir-->
-    <require-dir dir="${hadoop.source.dir}"/>
+    <require-dir path="${hadoop.source.dir}"/>
     <property name="ver" value="${hadoop.version}"/>
-    <require-dir dir="${release.dir}"/>
+    <require-dir path="${release.dir}"/>
   </target>
 
 
   <target name="release.copy.changelog" depends="release.copy.init"
     description="copy changelog and release">
     <!--    destination dir-->
-    <require-dir dir="${hadoop.source.dir}"/>
+    <require-dir path="${hadoop.source.dir}"/>
     <echo>
       copying release notes to ${hadoop.source.dir}.
       Check out the target branch for the updates first.
@@ -784,10 +798,12 @@ Message is in file ${message.out}
       tofile="${release.notes.dir}/CHANGELOG.${ver}.md"/>
   </target>
 
+  <!--  copy the generated jdiff files into the source tree for jdiff runs of the
+        next releases. -->
   <target name="release.copy.jdiff" depends="release.copy.init"
     description="copy jdiff">
     <!--    destination dir-->
-    <require-dir dir="${hadoop.source.dir}"/>
+    <require-dir path="${hadoop.source.dir}"/>
     <echo>
       copying jdiff files to ${hadoop.source.dir}.
       Check out the target branch for the updates first.
@@ -828,13 +844,15 @@ Message is in file ${message.out}
   <target name="release.site.prepare"
     depends="release.copy.init">
 
-    <require-dir dir="${hadoop.site.dir}"/>
+    <require-dir path="${hadoop.site.dir}"/>
     <property name="hadoop.site.content.docs"
       location="${hadoop.site.dir}/content/docs/"/>
 
     <property name="hadoop.site.content.dest"
       location="${hadoop.site.content.docs}/r${ver}"/>
 
+    <property name="hadoop.site.api.dir"
+      location="${hadoop.site.content.docs}/r${ver}"/>
 
     <tstamp>
       <format property="timestamp" pattern="yyyy-MM-dd" />
@@ -844,11 +862,6 @@ Message is in file ${message.out}
   <target name="release.site.announcement"
     description="build site announcement"
     depends="release.site.prepare">
-
-
-    <tstamp>
-        <format property="timestamp" pattern="yyyy-MM-dd" />
-    </tstamp>
 
     <loadfile property="announcement.txt"
       srcFile="src/text/announcement.txt">
@@ -879,15 +892,28 @@ Message is in file ${message.out}
       depends="release.site.prepare, release.site.announcement"
       description="release the site docs by copying them">
     <echo>copying site docs to ${hadoop.site.content.dest}</echo>
-    
+
     <copy file="${announcement.out}"
       tofile="${hadoop.site.dir}/src/release/${ver}.md" />
-    
+
     <delete dir="${hadoop.site.content.dest}"/>
     <copy todir="${hadoop.site.content.dest}"
       includeemptydirs="true">
       <fileset dir="${site.dir}"/>
     </copy>
+
+  </target>
+
+  <!-- check the untarred site [-->
+  <target name="site.validate"
+      depends="init"
+      description="validate the API docs in the site. download/untar the site first">
+    <echo>validate site docs. run release.site.untar first</echo>
+
+    <require-dir path="${site.dir}"/>
+    <require-dir path="${site.dir}/api"/>
+    <require-file path="${site.dir}/api/index.html"/>
+
 
   </target>
 
