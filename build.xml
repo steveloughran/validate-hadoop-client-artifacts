@@ -925,7 +925,7 @@ Message is in file ${message.out}
     <delete dir="${arm.dir}" />
     <mkdir dir="${arm.dir}" />
     <copy file="${arm.binary.src}" tofile="${arm.binary}" />
-    <copy file="${arm.binary.src}.asc" tofile="${arm.binary.asc}" />
+   <!-- <copy file="${arm.binary.src}.asc" tofile="${arm.binary.asc}" />-->
     <x executable="ls">
       <arg value="-l"/>
       <arg value="${arm.dir}"/>
@@ -950,13 +950,12 @@ gpg - -detach-sign -a  hadoop-arm64-3.3.5.tar.gz
     <echo> contents of ${arm.binary.sha512}
 ${arm.sha}
     </echo>
-<!-- not used because the original can be done.
+
     <gpg dir="${arm.dir}">
-      <arg value="&#45;&#45;detach-sign" />
+      <arg value="--detach-sign" />
       <arg value="-a" />
       <arg value="${arm.binary}" />
     </gpg>
-    -->
     <loadfile srcfile="${arm.binary.asc}" property="arm.asc"/>
     <echo> contents of ${arm.binary.asc}
 ${arm.asc}

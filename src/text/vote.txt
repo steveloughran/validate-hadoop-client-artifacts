@@ -29,7 +29,7 @@ This is off branch-3.3 and is the first big release since 3.3.2.
 Key changes include
 
 * Big update of dependencies to try and keep those reports of
-  transitive CVEs under control -both genuine and false positive.
+  transitive CVEs under control -both genuine and false positives.
 * HDFS RBF enhancements
 * Critical fix to ABFS input stream prefetching for correct reading.
 * Vectored IO API for all FSDataInputStream implementations, with
@@ -39,5 +39,14 @@ Key changes include
 * This release includes Arm64 binaries. Please can anyone with
   compatible systems validate these.
 
+Note, because the arm64 binaries are built separately on a different
+platform and JVM, their jar files may not match those of the x86
+release -and therefore the maven artifacts. I don't think this is
+an issue (the ASF actually releases source tarballs, the binaries are
+there for help only, though with the maven repo that's a bit blurred).
+
+The only way to be consistent would actually untar the x86.tar.gz,
+overwrite its binaries with the arm stuff, retar, sign and push out
+for the vote. Even automating that would be risky.
 
 Please try the release and vote. The vote will run for 5 days.

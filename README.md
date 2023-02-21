@@ -91,7 +91,7 @@ Copies the files from `downloads/incoming/artifacts` to `downloads/hadoop-$versi
 ant copy-scp-artifacts release.dir.check
 ```
 
-
+The `release.dir.check` target just lists the directory.
 
 ### Arm64 binaries
 
@@ -106,11 +106,11 @@ publised on maven.
 
 The arm process is one of
 1. Create the full set of artifacts on an arm machine (macbook, cloud vm, ...)
-2. Drop the mvn repository from nexus
+2. Drop any mvn repository from nexus
 3. Use the ant build to copy and rename the .tar.gz with the native binaries only
-4. Copy and rename the .asc file
+4. Create a new .asc file. This is needed is without the `--asfrelease` option no signing takes place.
 5. Generate new sha512 checksum file containing the new name.
-6. Move these files into the downloads/release dir
+6. Move these files into the `downloads/release/$RC` dir
 
 To perform stages 3-6:
 ```bash
@@ -150,7 +150,7 @@ directly.
 
 ### In the staging svn repo, update, add and commit the work
 
-This is not part of the tool. Can take a while...exit any VPN for extra speed.
+Can take a while...exit any VPN for extra speed.
 
 #### Manual
 ```bash
@@ -206,7 +206,7 @@ In build properties, declare `hadoop.version`, `rc` and `http.source`
 
 ```properties
 hadoop.version=3.3.5
-rc=0
+rc=1
 http.source=https://dist.apache.org/repos/dist/dev/hadoop/hadoop-${hadoop.version}-RC${rc}/
 ```
 
@@ -368,15 +368,18 @@ ln -s r3.3.5 stable3
 ls -l
 ```
 
-note, there are a lot of files, and if your shell has a prompt which shoes the git repo state, scanning can take a long time.
+### Git status prompt issues in fish
+
+There are a lot of files, and if your shell has a prompt which shoes the git repo state, scanning can take a long time.
 Disable it, such as for fish:
+
 ```fish
 set -e __fish_git_prompt_showdirtystate
 ```
 
 Finally, *commit*
 
-## Adding a global staging profile `asf-staging`
+## Adding a global maven staging profile `asf-staging`
 
 Many projects have a profile to use a staging repository, especially the ASF one.
 
