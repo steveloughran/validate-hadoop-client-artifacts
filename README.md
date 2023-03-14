@@ -5,51 +5,29 @@ This project helps validate hadoop release candidates
 It has an ant `build.xml` file to help with preparing the release,
 validating gpg signatures, creating release messages and other things.
 
-# ant builds
-
-see below
-
-# maven builds
-
-To build and test with the client API:
-
-```bash
-mvn clean test 
-```
-
-Compilation verifies the API is present; the
-test verifies that some shaded artifacts are present.
-
-If the hadoop artifacts are in staging/snapshot repositories,
-use the `staging` profile
-
-```bash
-mvn clean test -Pstaging
-```
-
-To force an update
-
-```bash
-mvn clean test -Pstaging -U
-```
-
-To purge all artifacts of the chosen hadoop version from your local maven repository.
-
-```bash
-ant purge
-```
-
 # workflow for preparing an RC
 
-Build the RC using the docker process on whichever host is set to do it
+Build the RC using the docker process on whichever host is set to do it.
 
-### set up build.properties
+### set up `build.properties`
 
 ```properties
+hadoop.version=3.3.5
+# RC for emails, staging dir names
+rc=0
+
+# id of commit built; used for email
+git.commit.id=3262495904d
+
+# info for copying down the RC from the build host
 scp.hostname=stevel-ubuntu
 scp.user=stevel
 scp.hadoop.dir=hadoop
+
+# SVN managed staging dir
 staging.dir=/Users/stevel/hadoop/release/staging
+
+# where various modules live for build and test
 spark.dir=/Users/stevel/Projects/sparkwork/spark
 cloud-examples.dir=/Users/stevel/Projects/sparkwork/cloud-integration/cloud-examples
 cloud.test.configuration.file=/Users/stevel/Projects/config/cloud-test-configs/s3a.xml
@@ -57,9 +35,7 @@ bigdata-interop.dir=/Users/stevel/Projects/gcs/bigdata-interop
 hboss.dir=/Users/stevel/Projects/hbasework/hbase-filesystem
 cloudstore.dir=/Users/stevel/Projects/cloudstore
 fs-api-shim.dir=/Users/stevel/Projects/Formats/fs-api-shim/
-hadoop.version=3.3.5
-git.commit.id=3262495904d
-rc=0
+
 ```
 
 ### Clean up first
@@ -97,24 +73,35 @@ The `release.dir.check` target just lists the directory.
 
 If arm64 binaries are being created then they must be
 built on an arm docker image.
-Do not do this at the same time as building the x86 binaries
-because both builds will generate staging repositories on
-nexus. Instead: run the arm one first and drop its artifacts
-on nexus before doing the x86 one. That will ensure that
-it is the JAR files created on the x86 build are the ones
-publised on maven.
+Do not use the `--asfrelease` option as this stages the JARs.
+Instead use the explicit `--deploy --native --sign` options
 
 The arm process is one of
 1. Create the full set of artifacts on an arm machine (macbook, cloud vm, ...)
-2. Drop any mvn repository from nexus
-3. Use the ant build to copy and rename the .tar.gz with the native binaries only
-4. Create a new .asc file. This is needed is without the `--asfrelease` option no signing takes place.
-5. Generate new sha512 checksum file containing the new name.
-6. Move these files into the `downloads/release/$RC` dir
+1. Use the ant build to copy and rename the `.tar.gz` with the native binaries only
+1. Create a new `.asc `file.
+1. Generate new sha512 checksum file containing the new name.
+1. Move these files into the `downloads/release/$RC` dir
 
-To perform stages 3-6:
 ```bash
-ant arm.copy.artifacts arm.release
+time dev-support/bin/create-release --docker --dockercache --mvnargs="-Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false" --deploy --native --sign
+```
+
+To perform these stages, you need a clean directory of the same
+hadoop commit ID as for the x86 release.
+
+In `build.properties` declare its location
+
+```properties
+arm.hadoop.dir=/Users/stevel/hadoop/release/hadoop
+```
+```bash
+# create the release (slow)
+ant arm.create.release
+# copy the artifacts to this project's target/ dir, renaming
+ant arm.copy.artifacts
+# sign artifacts then move to the shared RC dir alongside the x86 artifacts
+ant arm.release
 ```
 
 
@@ -152,25 +139,29 @@ directly.
 
 Can take a while...exit any VPN for extra speed.
 
-#### Manual
+
 ```bash
-cd $staging-dir
+ant stage-to-svn
+```
+
+Manual
+```bash
+cd $stagingdir
 svn update
 svn add <RC directory name>
 svn commit
 ```
 
-#### Ant
 
-```bash
-ant stage-to-svn
-```
 
 
 
 ### tag the rc and push to github
 
 This isn't automated as it needs to be done in the source tree.
+
+The ant `print-tag-command` prints the command needed to create and sign
+a tag.
 
 ```bash
 ant print-tag-command
@@ -206,11 +197,11 @@ In build properties, declare `hadoop.version`, `rc` and `http.source`
 
 ```properties
 hadoop.version=3.3.5
-rc=1
+rc=2
 http.source=https://dist.apache.org/repos/dist/dev/hadoop/hadoop-${hadoop.version}-RC${rc}/
 ```
 
-targets of relevance
+### Targets of Relevance
 
 | target               | action                     |
 |----------------------|----------------------------|
@@ -223,15 +214,16 @@ targets of relevance
 | `gpg.verify `        | verify the D/L'd artifacts |
 |                      |                            |
 
-set `release.native.binaries` to false to skip native binary checks on platforms without them
+set `check.native.binaries` to false to skip native binary checks on platforms without them
 
 ### Download the RC files from the http server
 
+Downloads under `downloads/incoming`
 ```bash
 ant release.fetch.http
 ```
 
-### untar and build.
+### untar source and build.
 
 This puts the built artifacts into the local maven repo so
 do not do this while building/testing downstream projects
@@ -239,6 +231,36 @@ do not do this while building/testing downstream projects
 
 ```bash
 ant release.src.untar release.src.build
+```
+
+
+### untar site and build.
+
+
+```bash
+ant release.site.untar 
+```
+
+
+### untar binary release
+
+Untars the (already downloaded) binary tar to `target/bin-untar`
+
+```bash
+ant release.bin.untar
+```
+
+once expanded, the binary commands can be tested
+
+
+```bash
+ant release.bin.commands
+```
+
+This will fail on a platform where the native binaries don't load
+
+```bash
+ant release.bin.commands -Dcheck.native.binaries=false
 ```
 
 # Building and testing projects from the staged maven artifacts
@@ -441,3 +463,26 @@ For some unknown reason the parquet build doesn't seem to cope.
 </profile>
 
 ```
+
+### Rolling back an RC
+
+Drop the staged artifacts from nexus
+ [https://repository.apache.org/#stagingRepositories](https://repository.apache.org/#stagingRepositories)
+
+Delete the tag. Print out the delete command and then copy/paste it into a terminal in the hadoop repo
+
+```bash
+ant print-tag-command
+```
+
+Remove downloaded files and maven artifactgs
+
+```bash
+ant clean purge-from-maven
+```
+
+Removing staged tar files is not yet automated:
+
+1. Go to the svn staging dir
+2. `svn rm` the RC subdir
+3. `svn commit -m "rollback RC"`

@@ -84,11 +84,13 @@
   <property name="release.site.dir" location="${release.untar.dir}/site"/>
   <property name="site.dir" location="${release.untar.dir}/site/r${hadoop.version}"/>
   <property name="release.bin.dir" location="${release.untar.dir}/bin"/>
-  <property name="release.native.binaries" value="true"/>
+  <property name="check.native.binaries" value="true"/>
   <property name="arm.artifact.dir" location="${arm.hadoop.dir}/target/artifacts/" />
   <property name="arm.dir" location="${downloads.dir}/arm" />
   <property name="arm.binary.src" location="${arm.artifact.dir}/hadoop-${hadoop.version}.tar.gz" />
-  <property name="arm.binary" location="${arm.dir}/hadoop-arm64-${hadoop.version}.tar.gz" />
+  <property name="arm.binary.prefix" value="hadoop-arm64-${hadoop.version}" />
+  <property name="arm.binary.filename" value="${arm.binary.prefix}.tar.gz" />
+  <property name="arm.binary" location="${arm.dir}/${arm.binary.filename}" />
   <property name="arm.binary.sha512" location="${arm.binary}.sha512" />
   <property name="arm.binary.asc" location="${arm.binary}.asc" />
   <property name="staging.commit.msg" value="${jira.id}. Hadoop ${rc.name} built from ${git.commit.id}" />
@@ -289,6 +291,7 @@
     description="verify the downloaded artifacts">
 
 
+    <echo>Verifying GPG signatures of artifacts in ${release.dir}</echo>
     <gpgv>
       <arg value="--verify"/>
       <arg value="${release}-src.tar.gz.asc"/>
@@ -315,6 +318,11 @@
     <gpgv>
       <arg value="--verify"/>
       <arg value="CHANGELOG.md.asc"/>
+    </gpgv>
+
+    <gpgv>
+      <arg value="--verify"/>
+      <arg value="${arm.binary.filename}.asc"/>
     </gpgv>
 
 
@@ -689,15 +697,17 @@ Message is in file ${message.out}
 
     <gunzip src="${release.dir}/${release}-site.tar.gz" dest="target/untar"/>
     <untar src="target/untar/${release}-site.tar" dest="${release.site.dir}" />
+    <echo>site is under ${release.site.dir}</echo>
   </target>
 
   <target name="release.src.untar" depends="release.dir.check"
     description="untar the release source">
-    <echo>untarring source ${release.dir}/${release}-src.tar.gz</echo>
+    <echo>untarring source ${release.dir}/${release}-src.tar.gz to ${release.source.dir}</echo>
     <mkdir dir="target/untar"/>
 
     <gunzip src="${release.dir}/${release}-src.tar.gz" dest="target/untar"/>
     <untar src="target/untar/${release}-src.tar" dest="${release.source.dir}" />
+    <echo>Release source expanded to "${release.source.dir}/${release}-src"</echo>
   </target>
 
   <target name="release.src.build" depends="init"
@@ -718,7 +728,7 @@ Message is in file ${message.out}
   </target>
 
   <target name="release.bin.untar" depends="release.dir.check"
-    description="untar the binary release">
+    description="untar the x86 binary release">
 
     <mkdir dir="target/bin-untar" />
     <gunzip src="${release.dir}/${release}.tar.gz" dest="target/bin-untar"/>
@@ -729,7 +739,7 @@ Message is in file ${message.out}
       <arg value="${release}.tar" />
     </x>
     <echo>
-      Binary release expanded into target/untar/${release}
+      Binary release expanded into target/bin-untar/${release}
     </echo>
   </target>
 
@@ -767,11 +777,69 @@ Message is in file ${message.out}
 
     <echo>checknative</echo>
 
-    <hadoopq failonerror="${release.native.binaries}">
+    <hadoopq failonerror="${check.native.binaries}">
       <arg value="checknative" />
     </hadoopq>
 
   </target>
+
+
+  <target name="release.arm.untar" depends="release.dir.check"
+    description="untar the x86 binary release">
+
+    <mkdir dir="target/arm-untar" />
+    <gunzip src="${release.dir}/${arm.binary.filename}" dest="target/arm-untar"/>
+
+    <!--  use the native command to preserve properties -->
+    <x executable="tar" dir="target/arm-untar" >
+      <arg value="-xf" />
+      <arg value="${arm.binary.prefix}.tar" />
+    </x>
+    <echo>
+      Binary release expanded into target/arm-untar/${release}
+    </echo>
+  </target>
+  
+  <target name="release.arm.commands" depends="init"
+    description="run test hadoop commands ">
+
+
+    <!--   hadoop with errors-->
+    <presetdef name="hadoop">
+      <exec failonerror="true"
+        executable="bin/hadoop"
+        dir="target/arm-untar/${release}" />
+    </presetdef>
+
+    <!--    quiet hadoop-->
+    <presetdef name="hadoopq">
+      <exec failonerror="false"
+        executable="bin/hadoop"
+        dir="target/arm-untar/${release}" />
+    </presetdef>
+    <echo>ls</echo>
+    <hadoop>
+      <arg value="fs" />
+      <arg value="-ls" />
+      <arg value="file://${target}" />
+    </hadoop>
+
+    <echo>du</echo>
+    <hadoop>
+      <arg value="fs" />
+      <arg value="-du" />
+      <arg value="-h" />
+      <arg value="file://${target}" />
+    </hadoop>
+
+    <echo>checknative</echo>
+
+    <hadoopq failonerror="${check.native.binaries}">
+      <arg value="checknative" />
+    </hadoopq>
+
+  </target>
+
 
   <target name="release.copy.init" depends="release.dir.check" >
     <!--    destination dir-->
@@ -918,12 +986,34 @@ Message is in file ${message.out}
   </target>
 
 
+  <!--
+  create the arm distro
+  -->
+  <target name="arm.create.release" depends="init"
+      description="create an arm native distro -no asf staging">
+    <delete dir="${arm.dir}" />
+    <mkdir dir="${arm.dir}" />
+    <echo>source artifact is ${arm.binary.src}</echo>
+    <copy file="${arm.binary.src}" tofile="${arm.binary}" />
+   <!-- <copy file="${arm.binary.src}.asc" tofile="${arm.binary.asc}" />-->
+    <x executable="time" dir="${arm.hadoop.dir}">
+      <arg value="dev-support/bin/create-release"/>
+      <arg value="--docker"/>
+      <arg value="--dockercache"/>
+      <arg value="--deploy"/>
+      <arg value="--native"/>
+      <arg value="--sign"/>
+      <arg value='--deploy --native --sign'/>
+      <arg value="--mvnargs=-Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false"/>
+    </x>
+  </target>
 
   <!--  copy the arm binaries into downloads/arm with their final filenames -->
   <target name="arm.copy.artifacts" depends="init"
       description="copy the arm binary and .asc files">
     <delete dir="${arm.dir}" />
     <mkdir dir="${arm.dir}" />
+    <echo>source artifact is ${arm.binary.src}</echo>
     <copy file="${arm.binary.src}" tofile="${arm.binary}" />
    <!-- <copy file="${arm.binary.src}.asc" tofile="${arm.binary.asc}" />-->
     <x executable="ls">

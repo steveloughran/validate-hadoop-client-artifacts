@@ -191,6 +191,7 @@
         </exclusion>
       </exclusions>
     </dependency>
+
   </dependencies>
   <!--
    This is a profile to enable the use of the ASF snapshot and staging repositories
