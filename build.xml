@@ -346,7 +346,7 @@
       <arg value="${staged.artifacts.dir}"/>
     </x>
     <echo>
-      Now go to the staging dir ${staging.dir} and add/commit the files.
+      Now go run the stage-to-svn target and go and have a coffee/close JIRAs.
     </echo>
   </target>
 
@@ -369,7 +369,37 @@
       <arg value="-m" />
       <arg value="${staging.commit.msg}" />
     </svn>
+  </target>
 
+
+  <target name="stage-svn-rollback"
+    description="rollback a version staged to RC"
+    depends="init">
+    <fail unless="jira.id"/>
+    <fail unless="git.commit.id"/>
+
+    <svn dir="${staging.dir}">
+      <arg value="update" />
+    </svn>
+    <svn dir="${staging.dir}">
+      <arg value="rm" />
+      <arg value="${staged.artifacts.dir}" />
+    </svn>
+    <echo>Comitting with message ${staging.commit.msg}. Please wait</echo>
+    <svn dir="${staging.dir}">
+      <arg value="commit" />
+      <arg value="-m" />
+      <arg value="rolling back ${staging.commit.msg}" />
+    </svn>
+  </target>
+
+  <target name="stage-svn-log"
+    description="print the staging svn repo log"
+    depends="init">
+
+    <svn dir="${staging.dir}">
+      <arg value="log" />
+    </svn>
   </target>
 
   <target name="print-tag-command"
@@ -388,6 +418,9 @@
 
       # how to push to apache
       git push apache ${tag.name}
+
+      # if needed, how to delete locally
+      git tag -d ${tag.name}
 
       # if needed, how to delete it from apache
       git push --delete apache ${tag.name}
@@ -991,11 +1024,7 @@ Message is in file ${message.out}
   -->
   <target name="arm.create.release" depends="init"
       description="create an arm native distro -no asf staging">
-    <delete dir="${arm.dir}" />
-    <mkdir dir="${arm.dir}" />
-    <echo>source artifact is ${arm.binary.src}</echo>
-    <copy file="${arm.binary.src}" tofile="${arm.binary}" />
-   <!-- <copy file="${arm.binary.src}.asc" tofile="${arm.binary.asc}" />-->
+    <echo>Creating ARM release in ${arm.hadoop.dir} </echo>
     <x executable="time" dir="${arm.hadoop.dir}">
       <arg value="dev-support/bin/create-release"/>
       <arg value="--docker"/>

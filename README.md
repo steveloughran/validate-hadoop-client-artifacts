@@ -96,12 +96,15 @@ In `build.properties` declare its location
 arm.hadoop.dir=/Users/stevel/hadoop/release/hadoop
 ```
 ```bash
-# create the release (slow)
+# create the release.
+# Broken until someone fixes HADOOP-18664. you can't launch create-release --docker from a build file
 ant arm.create.release
 # copy the artifacts to this project's target/ dir, renaming
 ant arm.copy.artifacts
 # sign artifacts then move to the shared RC dir alongside the x86 artifacts
 ant arm.release
+# list dir and verify the sizes are almost the same
+release.dir.check
 ```
 
 
@@ -117,6 +120,13 @@ When committed to subversion it will be uploaded and accessible via a
 https://svn.apache.org URL.
 
 
+This makes it visible to others via the apache svn site, but it
+is not mirrored yet.
+
+When the RC is released, an `svn move` operation can promote it
+directly.
+
+
 *do this after preparing the arm64 binaries*
 
 Final review of the release files
@@ -124,16 +134,11 @@ Final review of the release files
 ant release.dir.check
 ```
 
-Now stage
+Now stage the files, first by copying the dir of release artifacts
+into the svn-mananaged location
 ```bash
 ant stage
 ```
-
-This makes it visible to others via the apache svn site, but it
-is not mirrored yet.
-
-When the RC is released, an `svn move` operation can promote it
-directly.
 
 ### In the staging svn repo, update, add and commit the work
 
@@ -151,9 +156,6 @@ svn update
 svn add <RC directory name>
 svn commit
 ```
-
-
-
 
 
 ### tag the rc and push to github
@@ -464,7 +466,7 @@ For some unknown reason the parquet build doesn't seem to cope.
 
 ```
 
-### Rolling back an RC
+# Rolling back an RC
 
 Drop the staged artifacts from nexus
  [https://repository.apache.org/#stagingRepositories](https://repository.apache.org/#stagingRepositories)
@@ -481,8 +483,13 @@ Remove downloaded files and maven artifactgs
 ant clean purge-from-maven
 ```
 
-Removing staged tar files is not yet automated:
 
 1. Go to the svn staging dir
 2. `svn rm` the RC subdir
 3. `svn commit -m "rollback RC"`
+
+```bash
+ant stage-svn-rollback
+# and get the log
+ant stage-svn-log
+```
