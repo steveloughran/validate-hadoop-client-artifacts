@@ -74,7 +74,7 @@ The `release.dir.check` target just lists the directory.
 If arm64 binaries are being created then they must be
 built on an arm docker image.
 Do not use the `--asfrelease` option as this stages the JARs.
-Instead use the explicit `--deploy --native --sign` options
+Instead use the explicit `--deploy --native --sign` options.
 
 The arm process is one of
 1. Create the full set of artifacts on an arm machine (macbook, cloud vm, ...)
@@ -82,10 +82,6 @@ The arm process is one of
 1. Create a new `.asc `file.
 1. Generate new sha512 checksum file containing the new name.
 1. Move these files into the `downloads/release/$RC` dir
-
-```bash
-time dev-support/bin/create-release --docker --dockercache --mvnargs="-Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false" --deploy --native --sign
-```
 
 To perform these stages, you need a clean directory of the same
 hadoop commit ID as for the x86 release.
@@ -95,16 +91,25 @@ In `build.properties` declare its location
 ```properties
 arm.hadoop.dir=/Users/stevel/hadoop/release/hadoop
 ```
+
+In that dir, create the relese.
+
+```bash
+time dev-support/bin/create-release --docker --dockercache --mvnargs="-Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false" --deploy --native --sign
+```
+
+*Important* make sure there is no duplicate staged hadoop repo in nexus.
+If there is: drop and restart the x86 release process to make sure it is the one published
+
+
 ```bash
 # create the release.
 # Broken until someone fixes HADOOP-18664. you can't launch create-release --docker from a build file
-ant arm.create.release
+#ant arm.create.release
 # copy the artifacts to this project's target/ dir, renaming
 ant arm.copy.artifacts
 # sign artifacts then move to the shared RC dir alongside the x86 artifacts
-ant arm.release
-# list dir and verify the sizes are almost the same
-release.dir.check
+ant arm.release release.dir.check
 ```
 
 
@@ -142,7 +147,7 @@ ant stage
 
 ### In the staging svn repo, update, add and commit the work
 
-Can take a while...exit any VPN for extra speed.
+This can take a while...exit any VPN for extra speed.
 
 
 ```bash
@@ -185,7 +190,7 @@ ant vote-message
 ```
 
 The message is printed and saved to the file `target/vote.txt`
-
+    
 *do not send it until you have validated the URLs resolve*
 
 Now wait for the votes to come in. This is a good time to
@@ -240,7 +245,7 @@ ant release.src.untar release.src.build
 
 
 ```bash
-ant release.site.untar 
+ant release.site.untar
 ```
 
 
@@ -259,7 +264,11 @@ once expanded, the binary commands can be tested
 ant release.bin.commands
 ```
 
-This will fail on a platform where the native binaries don't load
+This will fail on a platform where the native binaries don't load,
+unless the checknative command has been disabled.
+```properties
+check.native.binaries=false
+```
 
 ```bash
 ant release.bin.commands -Dcheck.native.binaries=false
@@ -324,6 +333,14 @@ Validates hadoop client artifacts; the cloud tests cover hadoop cloud storage cl
 ```bash
 ant spark.build
 ```
+
+And to to run the hadoop-cloud tests
+
+```bash
+ant spark.test.hadoop-cloud
+```
+
+A full spark test run takes so long that CI infrastructure should be used.
 
 ### Spark cloud integration tests
 

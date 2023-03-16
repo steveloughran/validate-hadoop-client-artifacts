@@ -484,7 +484,24 @@ Message is in file ${message.out}
       <arg value="clean"/>
       <arg value="install"/>
     </mvn>
+  </target>
 
+  <target name="spark.test.hadoop-cloud" if="spark.dir"
+    depends="init"
+    description="run the spark-hadoop-cloud tests in spark.dir">
+    <echo>
+      Test spark hadoop-cloud.
+      Requires the full spark build to have already been executed
+    </echo>
+    <mvn dir="${spark.dir}">
+      <arg value="-Psnapshots-and-staging"/>
+      <arg value="-Phadoop-cloud"/>  <!-- cloud module -->
+      <arg value="--pl"/>
+      <arg value="hadoop-cloud"/>
+      <arg value="-Dmaven.javadoc.skip=true"/>
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="test"/>
+    </mvn>
   </target>
 
 
@@ -540,8 +557,7 @@ Message is in file ${message.out}
       https://github.com/GoogleCloudPlatform/bigdata-intero
     </echo>
     <mvn dir="${bigdata-interop.dir}">
-      <arg value="-T 1C"/>
-      <arg value="-Psnapshots-and-staging"/>
+      <arg value="-Pasf-staging"/>
       <arg value="-DskipTests"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="clean"/>
@@ -558,8 +574,7 @@ Message is in file ${message.out}
       Test the google gcs artifacts. Requires GCS credentials.
     </echo>
     <mvn dir="${bigdata-interop.dir}">
-      <arg value="-T 1C"/>
-      <arg value="-Psnapshots-and-staging"/>
+      <arg value="-Pasf-staging"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="clean"/>
       <arg value="package"/>
@@ -579,7 +594,6 @@ Message is in file ${message.out}
       use the asf staging reop.
     </echo>
     <mvn dir="${hboss.dir}">
-      <arg value="-T 1C"/>
       <arg value="-Pasf-staging"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="-Dhadoop33.version=${hadoop.version}"/>
@@ -619,7 +633,6 @@ Message is in file ${message.out}
 
     </echo>
     <mvn dir="${cloudstore.dir}">
-      <arg value="-T 1C"/>
       <arg value="-Psnapshots-and-staging"/>
       <arg value="-Pextra"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
