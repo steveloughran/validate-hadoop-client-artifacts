@@ -78,10 +78,10 @@ Instead use the explicit `--deploy --native --sign` options.
 
 The arm process is one of
 1. Create the full set of artifacts on an arm machine (macbook, cloud vm, ...)
-1. Use the ant build to copy and rename the `.tar.gz` with the native binaries only
-1. Create a new `.asc `file.
-1. Generate new sha512 checksum file containing the new name.
-1. Move these files into the `downloads/release/$RC` dir
+2. Use the ant build to copy and rename the `.tar.gz` with the native binaries only
+3. Create a new `.asc `file.
+4. Generate new sha512 checksum file containing the new name.
+5. Move these files into the `downloads/release/$RC` dir
 
 To perform these stages, you need a clean directory of the same
 hadoop commit ID as for the x86 release.
@@ -198,13 +198,13 @@ repeat all the testing of downstream projects, this time
 validating the staged artifacts, rather than any build
 locally.
 
-# How to download and build someone else's release candidate
+# How to download and build a staged release candidate
 
 In build properties, declare `hadoop.version`, `rc` and `http.source`
 
 ```properties
 hadoop.version=3.3.5
-rc=2
+rc=3
 http.source=https://dist.apache.org/repos/dist/dev/hadoop/hadoop-${hadoop.version}-RC${rc}/
 ```
 
@@ -218,7 +218,7 @@ http.source=https://dist.apache.org/repos/dist/dev/hadoop/hadoop-${hadoop.versio
 | `release.src.build`  | build the source           |
 | `release.src.test`   | build and test the source  |
 | `gpg.keys`           | import the hadoop KEYS     |
-| `gpg.verify `        | verify the D/L'd artifacts |
+| `gpg.verify`         | verify the D/L'd artifacts |
 |                      |                            |
 
 set `check.native.binaries` to false to skip native binary checks on platforms without them
@@ -349,11 +349,20 @@ Spark itself does not include any integration tests of the object store connecto
 This independent module tests the s3a, gcs and abfs connectors,
 and associated committers, through the spark RDD and SQL APIs.
 
+
 [cloud integration](https://github.com/hortonworks-spark/cloud-integration)
 ```bash
 ant cloud-examples.build
 ant cloud-examples.test
 ```
+
+
+The test run is fairly tricky to get running; don't try and do this while
+* MUST be java 11+
+* Must have `cloud.test.configuration.file` set to an XML conf file
+  declaring the auth credentials and stores to use for the target object stores
+  (s3a, abfs, gcs)
+
 
 ## HBase filesystem
 
@@ -368,7 +377,26 @@ Integration tests will go through S3A connector.
 ant hboss.build
 ```
 
-## building the Hadoop site
+# After the Vote Succeeds: publishing the release
+
+## Update the announcement and create site/email notifications
+
+Edit `src/text/announcement.txt` to have an up-to-date
+description of the release.
+
+The `release.site.announcement` target will generate these
+annoucements. Execute the target and then review
+the generated files in `target/`
+
+```bash
+ant release.site.announcement
+```
+
+The announcement must be geneated before the next stage,
+so make sure the common body of the site and email
+annoucement is up to date: `src/text/core-announcement.txt`
+
+## Build the Hadoop site
 
 Set `hadoop.site.dir` to be the path of the
 local clone of the ASF site repository
@@ -378,20 +406,29 @@ https://gitbox.apache.org/repos/asf/hadoop-site.git
 hadoop.site.dir=/Users/stevel/hadoop/release/hadoop-site
 ```
 
-Prepare the site with the following targets
+Prepare the site; this also demand-generates the release announcement
+
+The site .tar.gz distributable is used for the site; this must already
+have been downloaded. It must be untarred and copied under the
+SCM-managed `${hadoop.site.dir}` repository, linked up
+and then committed.
 
 ```bash
-ant release.site.announcement
+ant release.site.untar
+
 ant release.site.docs
 ```
 
-Review the annoucement.
+Review the announcement.
 
-### Manually link the current/stable symlinks to the new release
+### Manually link the site current/stable symlinks to the new release
 
-In the hadoop site dir
+In the hadoop site dir content/docs subdir
 
 ```bash
+
+# update
+git pull
 
 # review current status
 ls -l
@@ -402,14 +439,66 @@ ln -s r.3.3.5 current3
 
 # symlink stable
 rm stable3
-ln -s r3.3.5 stable
 ln -s r3.3.5 stable3
 
 # review new status
 ls -l
 ```
 
-### Git status prompt issues in fish
+
+Finally, *commit*
+
+```bash
+git add .
+git status
+git commit -S -m "HADOOP-18470. Release Hadoop 3.3.5"
+git push
+```
+
+
+## Promoting the RC artifacts to production through `svn move`
+
+```bash
+
+# check that the source and dest URLs are good
+ant staging-init
+# do the promotion
+ant stage-move-to-production
+```
+
+## update the `current` ref
+
+```bash
+https://dist.apache.org/repos/dist/release/hadoop/common
+change the 
+```
+Check that release URL in your browser.
+
+## Publish nexus artifacts
+
+do this at [https://repository.apache.org/#stagingRepositories](https://repository.apache.org/#stagingRepositories)
+
+to verify this is visible
+[search for hadoop-common](https://repository.apache.org/#nexus-search;quick~hadoop-common)
+-verify the latest version is in the production repository.
+
+## Send that email announcement
+
+
+### tag the final release and push that tag
+
+The ant `print-tag-command` prints the command needed to create and sign
+a tag.
+
+```bash
+ant print-tag-command
+```
+
+Use the "tagging the final release" commands printed
+
+# tips
+
+## Git status prompt issues in fish
 
 There are a lot of files, and if your shell has a prompt which shoes the git repo state, scanning can take a long time.
 Disable it, such as for fish:
@@ -417,8 +506,6 @@ Disable it, such as for fish:
 ```fish
 set -e __fish_git_prompt_showdirtystate
 ```
-
-Finally, *commit*
 
 ## Adding a global maven staging profile `asf-staging`
 

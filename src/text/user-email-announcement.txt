@@ -3,7 +3,7 @@
 On behalf of the Apache Hadoop Project Management Committee, I am
 pleased to announce the release of Apache Hadoop ${ver}.
 
-${announcement.txt}
+${core-announcement.txt}
 
 Many thanks to everyone who helped in this release by supplying patches,
 reviewing them, helping get this release building and testing and

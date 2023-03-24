@@ -17,21 +17,4 @@ linked: true
   limitations under the License. See accompanying LICENSE file.
 -->
 
-This is a release of Apache Hadoop ${release.branch} line.
-
-It contains a small number of security and critical integration fixes since ${previous.ver}.
-
-Users of Apache Hadoop ${previous.ver} should upgrade to this release.
-
-Users of hadoop 2.x and hadoop 3.2 should also upgrade to the 3.3.x line.
-As well as feature enhancements, this is the sole branch currently
-receiving fixes for anything other than critical security/data integrity
-issues.
-
-Users are encouraged to read the [overview of major changes][1] since release ${previous.ver}.
-For details of bug fixes, improvements, and other enhancements since the previous ${previous.ver} release,
-please check [release notes][2] and [changelog][3].
-
-[1]: http://hadoop.apache.org/docs/r${ver}/index.html
-[2]: http://hadoop.apache.org/docs/r${ver}/hadoop-project-dist/hadoop-common/release/${ver}/RELEASENOTES.${ver}.html
-[3]: http://hadoop.apache.org/docs/r${ver}/hadoop-project-dist/hadoop-common/release/${ver}/CHANGELOG.${ver}.html
+${core-announcement.txt}

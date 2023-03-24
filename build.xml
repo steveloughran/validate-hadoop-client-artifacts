@@ -57,13 +57,13 @@
   <property name="release.branch" value="3.3"/>
 
 
-  <property name="git.commit.id" value="3262495904d"/>
+  <property name="git.commit.id" value="706d88266ab"/>
   <property name="jira.id" value="HADOOP-18470"/>
 
 
 
   <!-- for spark builds -->
-  <property name="spark.version" value="3.4.0-SNAPSHOT"/>
+  <property name="spark.version" value="3.5.0-SNAPSHOT"/>
   <!--  spark excludes hadoop-aws dependency and forces in their own
         this fixes it to be in sync with hadoop
         see https://issues.apache.org/jira/browse/SPARK-39969
@@ -74,7 +74,6 @@
   <property name="release" value="hadoop-${hadoop.version}"/>
   <property name="rc.dirname" value="${release}-${rc}"/>
   <property name="release.dir" location="${downloads.dir}/${rc.dirname}"/>
-  <property name="staged.artifacts.dir" location="${staging.dir}/${rc.dirname}"/>
 
   <property name="tag.name" value="release-${rc.name}"/>
 <!--  <property name="nexus.staging.url"
@@ -88,14 +87,20 @@
   <property name="arm.artifact.dir" location="${arm.hadoop.dir}/target/artifacts/" />
   <property name="arm.dir" location="${downloads.dir}/arm" />
   <property name="arm.binary.src" location="${arm.artifact.dir}/hadoop-${hadoop.version}.tar.gz" />
-  <property name="arm.binary.prefix" value="hadoop-arm64-${hadoop.version}" />
+  <property name="arm.binary.prefix" value="hadoop-${hadoop.version}-aarch64" />
   <property name="arm.binary.filename" value="${arm.binary.prefix}.tar.gz" />
   <property name="arm.binary" location="${arm.dir}/${arm.binary.filename}" />
   <property name="arm.binary.sha512" location="${arm.binary}.sha512" />
   <property name="arm.binary.asc" location="${arm.binary}.asc" />
+
+  <property name="staged.artifacts.dir" location="${staging.dir}/${rc.dirname}"/>
+
   <property name="staging.commit.msg" value="${jira.id}. Hadoop ${rc.name} built from ${git.commit.id}" />
 
-
+  <property name="svn.apache.dist" value="https://dist.apache.org/"/>
+  <property name="svn.staging.url" value="${svn.apache.dist}/repos/dist/dev/hadoop/${rc.dirname}"/>
+  <property name="svn.production.url" value="${svn.apache.dist}/repos/dist/release/hadoop/common/${release}"/>
+  <property name="production.commit.msg" value="${jira.id}. Releasing Hadoop ${hadoop.version}" />
 
   <target name="init">
 
@@ -350,11 +355,23 @@
     </echo>
   </target>
 
-  <target name="stage-to-svn"
-    description="stage the RC into svn"
+  <target name="staging-init"
+    description="init svn staging"
     depends="init">
     <fail unless="jira.id"/>
     <fail unless="git.commit.id"/>
+    <echo>
+      staging.commit.msg = ${staging.commit.msg}
+      production.commit.msg = ${production.commit.msg}
+      svn.staging.url = ${svn.staging.url}
+      svn.production.url = ${svn.production.url}
+    </echo>
+  </target>
+
+  <target name="stage-to-svn"
+    description="stage the RC into svn"
+    depends="staging-init">
+
 
     <svn dir="${staging.dir}">
       <arg value="update" />
@@ -374,9 +391,7 @@
 
   <target name="stage-svn-rollback"
     description="rollback a version staged to RC"
-    depends="init">
-    <fail unless="jira.id"/>
-    <fail unless="git.commit.id"/>
+    depends="staging-init">
 
     <svn dir="${staging.dir}">
       <arg value="update" />
@@ -395,12 +410,41 @@
 
   <target name="stage-svn-log"
     description="print the staging svn repo log"
-    depends="init">
+    depends="staging-init">
 
     <svn dir="${staging.dir}">
       <arg value="log" />
     </svn>
   </target>
+
+  <target name="stage-move-to-production"
+    description="promote the staged the RC into dist"
+    depends="staging-init">
+
+    <svn dir="${staging.dir}">
+      <arg value="update" />
+    </svn>
+     <svn dir="${staging.dir}">
+      <arg value="info" />
+      <arg value="${svn.staging.url}" />
+    </svn>
+
+    <echo>Comitting with message ${production.commit.msg}. Please wait</echo>
+
+    <svn dir="${staging.dir}">
+      <arg value="move" />
+      <arg value="${svn.staging.url}" />
+      <arg value="${svn.production.url}" />
+      <arg value="-m" />
+      <arg value="${production.commit.msg}" />
+    </svn>
+    <svn dir="${staging.dir}">
+      <arg value="commit" />
+      <arg value="-m" />
+      <arg value="${production.commit.msg}" />
+    </svn>
+  </target>
+
 
   <target name="print-tag-command"
     description="print the git command to tag the rc"
@@ -424,6 +468,10 @@
 
       # if needed, how to delete it from apache
       git push --delete apache ${tag.name}
+
+      # tagging the final release
+      git tag -s rel/release-${hadoop.version} -m "${jira.id}. Hadoop ${hadoop.version} release"
+      git push origin rel/release-${hadoop.version}
     </echo>
   </target>
 
@@ -538,6 +586,8 @@ Message is in file ${message.out}
     <mvn dir="${cloud-examples.dir}">
       <arg value="-Psnapshots-and-staging"/>
       <arg value="-Dspark-3.4"/>
+      <arg value="-Pscale"/>
+      <arg value="-Dscale.test.enabled=true"/>
       <arg value="-Dspark.version=${spark.version}"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="-Dcloud.test.configuration.file=${cloud.test.configuration.file}"/>
@@ -977,6 +1027,12 @@ Message is in file ${message.out}
     description="build site announcement"
     depends="release.site.prepare">
 
+    <loadfile property="core-announcement.txt"
+      srcFile="src/text/core-announcement.txt">
+      <filterchain>
+        <expandproperties/>
+      </filterchain>
+    </loadfile>
     <loadfile property="announcement.txt"
       srcFile="src/text/announcement.txt">
       <filterchain>
