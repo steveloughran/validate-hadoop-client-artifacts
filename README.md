@@ -485,7 +485,7 @@ to verify this is visible
 ## Send that email announcement
 
 
-### tag the final release and push that tag
+## tag the final release and push that tag
 
 The ant `print-tag-command` prints the command needed to create and sign
 a tag.
@@ -496,6 +496,14 @@ ant print-tag-command
 
 Use the "tagging the final release" commands printed
 
+## clean up your local system
+
+For safety, purge your maven repo of all versions of the release, so
+as to guarantee that everything comes from the production store.
+
+```bash
+ant purge-from-maven
+```
 # tips
 
 ## Git status prompt issues in fish
