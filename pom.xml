@@ -40,7 +40,7 @@
     <maven-antrun-plugin.version>1.7</maven-antrun-plugin.version>
 
 
-    <hadoop.version>3.3.5</hadoop.version>
+    <hadoop.version>3.4.0</hadoop.version>
 
     <!-- SLF4J/LOG4J version -->
     <slf4j.version>1.7.36</slf4j.version>
@@ -248,9 +248,16 @@
     </profile>
 
     <profile>
+      <id>3.4</id>
+      <properties>
+        <hadoop.version>3.4.0</hadoop.version>
+      </properties>
+    </profile>
+
+    <profile>
       <id>trunk</id>
       <properties>
-        <hadoop.version>3.4.0-SNAPSHOT</hadoop.version>
+        <hadoop.version>3.5.0-SNAPSHOT</hadoop.version>
       </properties>
     </profile>
 

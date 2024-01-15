@@ -48,13 +48,13 @@
 
 
   <!--  base name of a release -->
-  <property name="hadoop.version" value="3.3.5"/>
+  <property name="hadoop.version" value="3.4"/>
   <property name="rc" value="RC0"/>
   <property name="rc.name" value="${hadoop.version}-${rc}"/>
 
  <!--  previous version, used in annoucements -->
-  <property name="previous.ver" value="3.3.4"/>
-  <property name="release.branch" value="3.3"/>
+  <property name="previous.ver" value="3.3.6"/>
+  <property name="release.branch" value="3.4"/>
 
 
   <property name="git.commit.id" value="706d88266ab"/>
@@ -101,6 +101,8 @@
   <property name="svn.staging.url" value="${svn.apache.dist}/repos/dist/dev/hadoop/${rc.dirname}"/>
   <property name="svn.production.url" value="${svn.apache.dist}/repos/dist/release/hadoop/common/${release}"/>
   <property name="production.commit.msg" value="${jira.id}. Releasing Hadoop ${hadoop.version}" />
+
+  <property name="bin-untar.dir" location="target/bin-untar/${release}"/>
 
   <target name="init">
 
@@ -232,11 +234,13 @@
   </target>
 
   <target name="mvn-test" depends="init"
-    description="build and test the maven module">
+    description="build and test the maven module, use the build.properties hadoop version">
 
     <mvn>
       <arg value="test"/>
       <arg value="-Pstaging"/>
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
+      <arg value="-U"/>
     </mvn>
   </target>
 
@@ -275,8 +279,10 @@
   <target name="release.dir.check" depends="init">
     <verify-release-dir />
 
+    <echo>release.dir=${release.dir}</echo>
     <x executable="ls">
       <arg value="-l"/>
+      <arg value="-R"/>
       <arg value="${release.dir}"/>
     </x>
 
@@ -773,17 +779,23 @@ Message is in file ${message.out}
     <x executable="wget" dir="${incoming.dir}" >
       <arg value="--no-parent"/>
       <arg value="--recursive"/>
-      <arg value="--level=1"/>
+      <arg value="--level=5"/>
+      <arg value="-e"/>
+      <arg value="robots=off"/>
+      <arg value="-R"/>
+      <arg value="index.html"/>
+      <arg value="--report-speed=bits"/>
       <arg value="--no-directories"/>
-      <arg value="${http.source}"/>
+      <arg value="${http.source}/"/>
     </x>
     <!--  remove all index.html files which crept in -->
-    <delete dir="${incoming.dir}" includes="index.*" />
+    <!--<delete dir="${incoming.dir}" includes="index.*" />-->
 
     <delete dir="${release.dir}"/>
     <move
       file="${incoming.dir}"
       tofile="${release.dir}"/>
+    <echo>copied http downloaded artifacts to ${release.dir}</echo>
   </target>
 
   <target name="release.site.untar" depends="release.dir.check"
@@ -854,7 +866,7 @@ Message is in file ${message.out}
     <presetdef name="hadoopq">
       <exec failonerror="false"
         executable="bin/hadoop"
-        dir="target/bin-untar/${release}" />
+        dir="${bin-untar.dir}" />
     </presetdef>
     <echo>ls</echo>
     <hadoop>

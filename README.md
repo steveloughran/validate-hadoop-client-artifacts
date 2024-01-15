@@ -295,6 +295,7 @@ ant purge-from-maven
 
 ## client validator maven
 
+Download the artifacts from maven staging repositories and compile/test a minimal application
 
 ```bash
 ant mvn-test
