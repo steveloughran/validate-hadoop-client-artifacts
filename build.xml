@@ -45,23 +45,53 @@
 
   </description>
 
-  <!-- set immutable properties for this build -->
-  <property name="src" location="src"/>
-  <property name="home" location="${user.home}"/>
-  <property name="target" location="target"/>
-  <property name="downloads.dir" location="downloads"/>
-  <property name="dist.dir" location="${downloads.dir}/dist"/>
-  <property name="incoming.dir" location="${downloads.dir}/incoming"/>
-  
 
-  <!-- foundational macro to fail if a property is unset-->
+  <!-- foundational macro to fail if a property is unset; echo the valid -->
+
+
+  <macrodef name="show">
+    <attribute name="name" />
+    <sequential>
+      <echo>@{name}=${@{name}}</echo>
+    </sequential>
+  </macrodef>
+
   <macrodef name="require">
     <attribute name="p" />
     <sequential>
       <fail unless="@{p}" message="unset property @{p}" />
+      <show name="@{p}" />
     </sequential>
   </macrodef>
-  
+  <!--  set: set a property and print its value-->
+  <macrodef name="set">
+    <attribute name="name" />
+    <attribute name="value" />
+    <sequential>
+      <property name="@{name}" value="@{value}" />
+      <show name="@{name}" />
+    </sequential>
+  </macrodef>
+
+  <!--  set: set a property to a location and print its value-->
+  <macrodef name="setpath">
+    <attribute name="name" />
+    <attribute name="location" />
+    <sequential>
+      <property name="@{name}" location="@{location}" />
+      <show name="@{name}" />
+    </sequential>
+  </macrodef>
+
+
+  <!-- set immutable properties for this build -->
+  <setpath name="dist.dir" location="${downloads.dir}/dist"/>
+  <setpath name="downloads.dir" location="downloads"/>
+  <setpath name="home" location="${user.home}"/>
+  <setpath name="incoming.dir" location="${downloads.dir}/incoming"/>
+  <setpath name="src" location="src"/>
+  <setpath name="target" location="target"/>
+
   <!--
   Load the user/installation specific properties.
   As these fix the properties for the test of the build,
@@ -95,50 +125,75 @@
     <!-- commit id of the RC -->
     <require p="git.commit.id"/>
     <!-- JIRA ID of the release -->
+    <require p="http.source"/>
     <require p="jira.id"/>
 
-    <!-- branch this release is from -->
-    <require p="release.branch"/>
-
-
-    <property name="rc.name" value="${hadoop.version}-${rc}"/>
 
     <!--  previous version, used in announcements -->
     <require p="previous.version"/>
+    <!-- branch this release is from -->
+    <require p="release.branch"/>
+    <require p="asf.staging.url"/>
 
 
-    <property name="release" value="hadoop-${hadoop.version}"/>
-    <property name="rc.dirname" value="${release}-${rc}"/>
-    <property name="release.dir" location="${downloads.dir}/${rc.dirname}"/>
+    <set name="release" value="hadoop-${hadoop.version}"/>
+    <set name="rc.name" value="${hadoop.version}-${rc}"/>
+    <set name="rc.dirname" value="${release}-${rc}"/>
+    <setpath name="release.dir" location="${downloads.dir}/${rc.dirname}"/>
+    <setpath name="release.untar.dir" location="${downloads.dir}/untar"/>
 
-    <property name="tag.name" value="release-${rc.name}"/>
-    <!--  <property name="asf.staging.url"
-        value=""/>-->
-    <property name="release.untar.dir" location="${downloads.dir}/untar"/>
-    <property name="release.source.dir" location="${release.untar.dir}/source"/>
-    <property name="release.site.dir" location="${release.untar.dir}/site"/>
-    <property name="site.dir" location="${release.untar.dir}/site/r${hadoop.version}"/>
-    <property name="release.bin.dir" location="${release.untar.dir}/bin"/>
-    <property name="check.native.binaries" value="true"/>
-    <property name="arm.artifact.dir" location="${arm.hadoop.dir}/target/artifacts/" />
-    <property name="arm.dir" location="${downloads.dir}/arm" />
-    <property name="arm.binary.src" location="${arm.artifact.dir}/hadoop-${hadoop.version}.tar.gz" />
-    <property name="arm.binary.prefix" value="hadoop-${hadoop.version}-aarch64" />
-    <property name="arm.binary.filename" value="${arm.binary.prefix}.tar.gz" />
-    <property name="arm.binary" location="${arm.dir}/${arm.binary.filename}" />
-    <property name="arm.binary.sha512" location="${arm.binary}.sha512" />
-    <property name="arm.binary.asc" location="${arm.binary}.asc" />
+    <setpath name="release.bin.dir" location="${release.untar.dir}/bin"/>
+    <setpath name="release.site.dir" location="${release.untar.dir}/site"/>
+    <setpath name="release.source.dir" location="${release.untar.dir}/source"/>
+    <setpath name="site.dir" location="${release.untar.dir}/site/r${hadoop.version}"/>
 
-    <property name="staged.artifacts.dir" location="${staging.dir}/${rc.dirname}"/>
+    <setpath name="staged.artifacts.dir" location="${staging.dir}/${rc.dirname}"/>
 
-    <property name="staging.commit.msg" value="${jira.id}. Hadoop ${rc.name} built from ${git.commit.id}" />
+    <set name="staging.commit.msg" value="${jira.id}. Hadoop ${rc.name} built from ${git.commit.id}" />
 
-    <property name="svn.apache.dist" value="https://dist.apache.org/"/>
-    <property name="svn.staging.url" value="${svn.apache.dist}/repos/dist/dev/hadoop/${rc.dirname}"/>
-    <property name="svn.production.url" value="${svn.apache.dist}/repos/dist/release/hadoop/common/${release}"/>
-    <property name="production.commit.msg" value="${jira.id}. Releasing Hadoop ${hadoop.version}" />
+    <set name="svn.apache.dist" value="https://dist.apache.org/"/>
+    <set name="svn.staging.url" value="${svn.apache.dist}/repos/dist/dev/hadoop/${rc.dirname}"/>
+    <set name="svn.production.url" value="${svn.apache.dist}/repos/dist/release/hadoop/common/${release}"/>
+    <set name="tag.name" value="release-${rc.name}"/>
+    <set name="production.commit.msg" value="${jira.id}. Releasing Hadoop ${hadoop.version}" />
 
-    <property name="bin-untar.dir" location="target/bin-untar/${release}"/>
+    <setpath name="bin-untar.dir" location="target/bin-untar/${release}"/>
+
+
+    <set name="scp.source"
+      value="${scp.user}@${scp.hostname}:${scp.hadoop.dir}/target/artifacts"/>
+
+    <!-- execute -->
+    <set name="check.native.binaries" value="true"/>
+
+    <setpath name="src.file"
+      location="${release.source.dir}/${release}-src"/>
+
+    <!-- ARM stuff -->
+    <setpath name="arm.artifact.dir" location="${arm.hadoop.dir}/target/artifacts/" />
+    <setpath name="arm.dir" location="${downloads.dir}/arm" />
+    <set name="arm.binary.prefix" value="hadoop-${hadoop.version}-aarch64" />
+    <set name="arm.binary.filename" value="${arm.binary.prefix}.tar.gz" />
+    <setpath name="arm.binary.src" location="${arm.artifact.dir}/hadoop-${hadoop.version}.tar.gz" />
+    <setpath name="arm.binary" location="${arm.dir}/${arm.binary.filename}" />
+    <setpath name="arm.binary.sha512" location="${arm.binary}.sha512" />
+    <setpath name="arm.binary.asc" location="${arm.binary}.asc" />
+
+    <echo>
+
+      subsidiary build options only if explicitly set
+      -----------------------------------------------
+
+      spark.dir = ${spark.dir}
+      spark.version=${spark.version}
+
+      cloudstore.dir=${cloudstore.dir}
+      bigdata-interop.dir=${bigdata-interop.dir}
+      hboss.dir=${hboss.dir}
+      cloud-examples.dir=${cloud-examples.dir}
+      cloud.test.configuration.file=${cloud.test.configuration.file}
+
+    </echo>
 
     <!-- exec() where failures fail the build. -->
     <presetdef name="x">
@@ -197,39 +252,6 @@
 
     <mkdir dir="${downloads.dir}"/>
 
-    <property name="scp.source"
-      value="${scp.user}@${scp.hostname}:${scp.hadoop.dir}/target/artifacts"/>
-
-    <property name="site.dir"
-      value="${release.source.dir}/${release}-src"/>
-
-    <echo>
-      hadoop.version=${hadoop.version}
-      rc=${rc}
-      jira.id=${jira.id}
-      git.commit.id=${git.commit.id}
-
-      Fetching and validating artifacts in ${release.dir}
-      release.dir=${release.dir}
-      asf.staging.url=${asf.staging.url}
-
-      scp.source=${scp.source}
-      http.source=${http.source}
-
-      release.source.dir=${release.source.dir}
-      staging.dir=${staging.dir}
-      staged.artifacts.dir=${staged.artifacts.dir}
-
-      spark.dir = ${spark.dir}
-      spark.version=${spark.version}
-
-      cloudstore.dir=${cloudstore.dir}
-      bigdata-interop.dir=${bigdata-interop.dir}
-      hboss.dir=${hboss.dir}
-      cloud-examples.dir=${cloud-examples.dir}
-      cloud.test.configuration.file=${cloud.test.configuration.file}
-
-    </echo>
   </target>
 
   <!--
@@ -280,7 +302,7 @@
     <fail unless="scp.hostname"/>
     <fail unless="scp.user"/>
     <fail unless="scp.hadoop.dir"/>
-    <property name="scp.source"
+    <set name="scp.source"
       value="${scp.user}@${scp.hostname}:${scp.hadoop.dir}/target/artifacts"/>
 
     <delete dir="${incoming.dir}"/>
@@ -559,12 +581,12 @@ Message is in file ${message.out}
 
 
     <!-- for spark builds -->
-    <property name="spark.version" value="3.5.0-SNAPSHOT"/>
+    <set name="spark.version" value="3.5.0-SNAPSHOT"/>
     <!--  spark excludes hadoop-aws dependency and forces in their own
           this fixes it to be in sync with hadoop
           see https://issues.apache.org/jira/browse/SPARK-39969
      -->
-    <property name="spark.aws.version" value="1.12.316"/>
+    <set name="spark.aws.version" value="1.12.316"/>
 
   </target>
 
@@ -860,7 +882,7 @@ Message is in file ${message.out}
 
   <!--  Fetch the artifacts from an http repo, for validating someone else's release.
    the download is into incoming.dir, then after a cleanup copied into release.dir; -->
-  <target name="release.fetch.http" depends="init"
+  <target name="release.fetch.wget" depends="init"
     description="fetch the artifacts from a remote http site with wget. may be slow">
     <fail unless="http.source"/>
 
@@ -882,6 +904,68 @@ Message is in file ${message.out}
     </x>
     <!--  remove all index.html files which crept in -->
     <!--<delete dir="${incoming.dir}" includes="index.*" />-->
+
+    <delete dir="${release.dir}"/>
+    <move
+      file="${incoming.dir}"
+      tofile="${release.dir}"/>
+    <echo>copied http downloaded artifacts to ${release.dir}</echo>
+  </target>
+
+  <!--  Fetch the artifacts from an http repo, for validating someone else's release.
+   the download is into incoming.dir, then after a cleanup copied into release.dir;
+    CHANGELOG.md
+    CHANGELOG.md.asc
+    CHANGELOG.md.sha512
+    RELEASENOTES.md
+    RELEASENOTES.md.asc
+    RELEASENOTES.md.sha512
+    hadoop-3.4.0-aarch64.tar.gz
+    hadoop-3.4.0-aarch64.tar.gz.asc
+    hadoop-3.4.0-aarch64.tar.gz.sha512
+    hadoop-3.4.0-rat.txt
+    hadoop-3.4.0-rat.txt.asc
+    hadoop-3.4.0-rat.txt.sha512
+    hadoop-3.4.0-site.tar.gz
+    hadoop-3.4.0-site.tar.gz.asc
+    hadoop-3.4.0-site.tar.gz.sha512
+    hadoop-3.4.0-src.tar.gz
+    hadoop-3.4.0-src.tar.gz.asc
+    hadoop-3.4.0-src.tar.gz.sha512
+    hadoop-3.4.0.tar.gz
+    hadoop-3.4.0.tar.gz.asc
+    hadoop-3.4.0.tar.gz.sha512
+       -->
+  <target name="release.fetch.http" depends="init"
+    description="fetch the artifacts from a remote http site with wget. may be slow">
+    <fail unless="http.source"/>
+    <mkdir dir="${incoming.dir}"/>
+
+    <!-- download the artfact plus signature and checkshums -->
+    <macrodef name="download">
+      <attribute name="artifact" />
+      <sequential>
+        <get
+          dest="${incoming.dir}"
+          skipexisting="true"
+          verbose="true"
+          usetimestamp="true">
+          <url url="${http.source}/@{artifact}" />
+          <url url="${http.source}/@{artifact}.asc" />
+          <url url="${http.source}/@{artifact}.sha512" />
+        </get>
+      </sequential>
+    </macrodef>
+    <!-- do a parallel fetch to avoid waiting quite as long for data. -->
+    <parallel threadsPerProcessor="4">
+      <download artifact="CHANGELOG.md"/>
+      <download artifact="RELEASENOTES.md"/>
+      <download artifact="${release}.tar.gz"/>
+      <download artifact="${release}-aarch64.tar.gz"/>
+      <download artifact="${release}-site.tar.gz"/>
+      <download artifact="${release}-src.tar.gz"/>
+      <download artifact="${release}-rat.txt"/>
+    </parallel>
 
     <delete dir="${release.dir}"/>
     <move
@@ -1054,7 +1138,7 @@ Message is in file ${message.out}
   <target name="release.copy.init" depends="release.dir.check" >
     <!--    destination dir-->
     <require-dir path="${hadoop.source.dir}"/>
-    <property name="ver" value="${hadoop.version}"/>
+    <set name="ver" value="${hadoop.version}"/>
     <require-dir path="${release.dir}"/>
   </target>
 
@@ -1201,6 +1285,15 @@ Message is in file ${message.out}
 
   </target>
 
+  <!-- ========================================================= -->
+  <!--
+      ARM release stuff.
+      This requires an arm laptop, does the docker build but doesn't
+      stage to ASF. Instead there's some work to patch in an x86 release
+      with the arm native libs, add checksums and signatures.
+      Goal: same JARs everywhere.
+        -->
+  <!-- ========================================================= -->
 
   <!--
   create the arm distro
@@ -1215,7 +1308,6 @@ Message is in file ${message.out}
       <arg value="--deploy"/>
       <arg value="--native"/>
       <arg value="--sign"/>
-      <arg value='--deploy --native --sign'/>
       <arg value="--mvnargs=-Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false"/>
     </x>
   </target>
@@ -1268,7 +1360,7 @@ ${arm.asc}
   <target name="arm.release" depends="arm.sign.artifacts"
     description="prepare the arm artifacts and copy into the release dir">
     <copy todir="${release.dir}" overwrite="true">
-      <fileset dir="${arm.dir}" includes="hadoop-arm64-*" />
+      <fileset dir="${arm.dir}" includes="hadoop-aarch64-*" />
     </copy>
   </target>
 
