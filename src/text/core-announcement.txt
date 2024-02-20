@@ -15,14 +15,14 @@ Key changes include
   release -and therefore the maven artifacts.
 * Security fixes in Hadoop's own code.
 
-Users of Apache Hadoop ${previous.ver} and earlier should upgrade to
+Users of Apache Hadoop ${previous.version} and earlier should upgrade to
 this release.
 
 All users are encouraged to read the [overview of major changes][1]
-since release ${previous.ver}.
+since release ${previous.version}.
 
 For details of bug fixes, improvements, and other enhancements since
-the previous ${previous.ver} release, please check [release notes][2]
+the previous ${previous.version} release, please check [release notes][2]
 and [changelog][3].
 
 

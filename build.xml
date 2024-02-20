@@ -16,96 +16,131 @@
   ~ limitations under the License.
   -->
 
-<project name="release-validator" default="init" basedir=".">
+<project name="hadoop-release" default="init" basedir=".">
   <description>
     build file to manage release and validation of artifacts.
-    Maven is one of the targets here.
+    Maven is simply one of the targets here.
 
+    It loads three property files in order:
+    * build.properties: custom deployment options. User managed.
+    * release.properties: pointer to the real release file. SCM-managed.
+    * src/releases/${release.property.file}: the actual release properties
+      which contains things like git tag, release and RC version etc.
+      SCM-managed.
+    
     hadoop version is set in the property hadoop.version
     build.properties is required to set source of RC tarball
 
-    All the complex commands are done by executing the unix commands;
+    Most of the complex commands are done by executing the unix commands;
     this build file sets them up by building the commands properly.
 
-    for building other modules to work, this ant build must be on java11
+    For building other modules, this ant build must be on java11
+    and have the maven executable in the path.
+    Note: some libraries (e.g. Avro) have even higher requirements.
+    Enjoy.
 
-    For validating artifacts put up as an an RC, use the http-artifacts target
-    to retrieve, with http.source set to the url, e.g
-    http.source=https://home.apache.org/~iwasakims/hadoop-2.10.2-RC0/
+    Text announcement templates are in
+    src/text
+    These are expanded with property expansion.
+
   </description>
-  <!-- set global properties for this build -->
+
+  <!-- set immutable properties for this build -->
   <property name="src" location="src"/>
   <property name="home" location="${user.home}"/>
   <property name="target" location="target"/>
-  <!--suppress AntResolveInspection -->
-  <property file="build.properties"/>
-
-
-
   <property name="downloads.dir" location="downloads"/>
   <property name="dist.dir" location="${downloads.dir}/dist"/>
   <property name="incoming.dir" location="${downloads.dir}/incoming"/>
+  
 
-
-  <!--  base name of a release -->
-  <property name="hadoop.version" value="3.4"/>
-  <property name="rc" value="RC0"/>
-  <property name="rc.name" value="${hadoop.version}-${rc}"/>
-
- <!--  previous version, used in annoucements -->
-  <property name="previous.ver" value="3.3.6"/>
-  <property name="release.branch" value="3.4"/>
-
-
-  <property name="git.commit.id" value="706d88266ab"/>
-  <property name="jira.id" value="HADOOP-18470"/>
-
-
-
-  <!-- for spark builds -->
-  <property name="spark.version" value="3.5.0-SNAPSHOT"/>
-  <!--  spark excludes hadoop-aws dependency and forces in their own
-        this fixes it to be in sync with hadoop
-        see https://issues.apache.org/jira/browse/SPARK-39969
+  <!-- foundational macro to fail if a property is unset-->
+  <macrodef name="require">
+    <attribute name="p" />
+    <sequential>
+      <fail unless="@{p}" message="unset property @{p}" />
+    </sequential>
+  </macrodef>
+  
+  <!--
+  Load the user/installation specific properties.
+  As these fix the properties for the test of the build,
+  they allow for customization.
+  -->
+  <!--suppress AntResolveInspection -->
+  <property file="build.properties"/>
+  
+  <!--
+   Load the release.properties file
+   This MUST contain an absolute/relative path to the release.properties
+   file if not set in build.properties.
    -->
-  <property name="spark.aws.version" value="1.12.316"/>
+  <loadproperties srcFile="release.properties"/>
+  <require p="release.property.file"/>
+  <!-- and load the file it referencves.-->
+  <loadproperties srcFile="${release.property.file}"/>
 
 
-  <property name="release" value="hadoop-${hadoop.version}"/>
-  <property name="rc.dirname" value="${release}-${rc}"/>
-  <property name="release.dir" location="${downloads.dir}/${rc.dirname}"/>
+  <!--
+   Load all property files, validate the settings, build the ant
+   properties, define macros etc.
+  -->
+  
+  <target name="init" description="initialize">
 
-  <property name="tag.name" value="release-${rc.name}"/>
-<!--  <property name="nexus.staging.url"
-    value=""/>-->
-  <property name="release.untar.dir" location="${downloads.dir}/untar"/>
-  <property name="release.source.dir" location="${release.untar.dir}/source"/>
-  <property name="release.site.dir" location="${release.untar.dir}/site"/>
-  <property name="site.dir" location="${release.untar.dir}/site/r${hadoop.version}"/>
-  <property name="release.bin.dir" location="${release.untar.dir}/bin"/>
-  <property name="check.native.binaries" value="true"/>
-  <property name="arm.artifact.dir" location="${arm.hadoop.dir}/target/artifacts/" />
-  <property name="arm.dir" location="${downloads.dir}/arm" />
-  <property name="arm.binary.src" location="${arm.artifact.dir}/hadoop-${hadoop.version}.tar.gz" />
-  <property name="arm.binary.prefix" value="hadoop-${hadoop.version}-aarch64" />
-  <property name="arm.binary.filename" value="${arm.binary.prefix}.tar.gz" />
-  <property name="arm.binary" location="${arm.dir}/${arm.binary.filename}" />
-  <property name="arm.binary.sha512" location="${arm.binary}.sha512" />
-  <property name="arm.binary.asc" location="${arm.binary}.asc" />
+    <!--  base name of a release -->
+    <require p="hadoop.version"/>
+    <!-- release candidate number-->
+    <require p="rc"/>
+    <!-- commit id of the RC -->
+    <require p="git.commit.id"/>
+    <!-- JIRA ID of the release -->
+    <require p="jira.id"/>
 
-  <property name="staged.artifacts.dir" location="${staging.dir}/${rc.dirname}"/>
+    <!-- branch this release is from -->
+    <require p="release.branch"/>
 
-  <property name="staging.commit.msg" value="${jira.id}. Hadoop ${rc.name} built from ${git.commit.id}" />
 
-  <property name="svn.apache.dist" value="https://dist.apache.org/"/>
-  <property name="svn.staging.url" value="${svn.apache.dist}/repos/dist/dev/hadoop/${rc.dirname}"/>
-  <property name="svn.production.url" value="${svn.apache.dist}/repos/dist/release/hadoop/common/${release}"/>
-  <property name="production.commit.msg" value="${jira.id}. Releasing Hadoop ${hadoop.version}" />
+    <property name="rc.name" value="${hadoop.version}-${rc}"/>
 
-  <property name="bin-untar.dir" location="target/bin-untar/${release}"/>
+    <!--  previous version, used in announcements -->
+    <require p="previous.version"/>
 
-  <target name="init">
 
+    <property name="release" value="hadoop-${hadoop.version}"/>
+    <property name="rc.dirname" value="${release}-${rc}"/>
+    <property name="release.dir" location="${downloads.dir}/${rc.dirname}"/>
+
+    <property name="tag.name" value="release-${rc.name}"/>
+    <!--  <property name="asf.staging.url"
+        value=""/>-->
+    <property name="release.untar.dir" location="${downloads.dir}/untar"/>
+    <property name="release.source.dir" location="${release.untar.dir}/source"/>
+    <property name="release.site.dir" location="${release.untar.dir}/site"/>
+    <property name="site.dir" location="${release.untar.dir}/site/r${hadoop.version}"/>
+    <property name="release.bin.dir" location="${release.untar.dir}/bin"/>
+    <property name="check.native.binaries" value="true"/>
+    <property name="arm.artifact.dir" location="${arm.hadoop.dir}/target/artifacts/" />
+    <property name="arm.dir" location="${downloads.dir}/arm" />
+    <property name="arm.binary.src" location="${arm.artifact.dir}/hadoop-${hadoop.version}.tar.gz" />
+    <property name="arm.binary.prefix" value="hadoop-${hadoop.version}-aarch64" />
+    <property name="arm.binary.filename" value="${arm.binary.prefix}.tar.gz" />
+    <property name="arm.binary" location="${arm.dir}/${arm.binary.filename}" />
+    <property name="arm.binary.sha512" location="${arm.binary}.sha512" />
+    <property name="arm.binary.asc" location="${arm.binary}.asc" />
+
+    <property name="staged.artifacts.dir" location="${staging.dir}/${rc.dirname}"/>
+
+    <property name="staging.commit.msg" value="${jira.id}. Hadoop ${rc.name} built from ${git.commit.id}" />
+
+    <property name="svn.apache.dist" value="https://dist.apache.org/"/>
+    <property name="svn.staging.url" value="${svn.apache.dist}/repos/dist/dev/hadoop/${rc.dirname}"/>
+    <property name="svn.production.url" value="${svn.apache.dist}/repos/dist/release/hadoop/common/${release}"/>
+    <property name="production.commit.msg" value="${jira.id}. Releasing Hadoop ${hadoop.version}" />
+
+    <property name="bin-untar.dir" location="target/bin-untar/${release}"/>
+
+    <!-- exec() where failures fail the build. -->
     <presetdef name="x">
       <exec failonerror="true"/>
     </presetdef>
@@ -131,42 +166,34 @@
     <!-- require a dir to exist. -->
     <macrodef name="require-dir">
       <attribute name="path" />
-        <sequential>
-          <fail message="dir missing: @{path}">
-            <condition>
-              <not>
-                <available file="@{path}"/>
-              </not>
-            </condition>
-          </fail>
-        </sequential>
+      <sequential>
+        <fail message="dir missing: @{path}">
+          <condition>
+            <not>
+              <available file="@{path}"/>
+            </not>
+          </condition>
+        </fail>
+      </sequential>
     </macrodef>
 
     <!-- require a file to exist -->
     <macrodef name="require-file">
       <attribute name="path" />
-        <sequential>
-          <fail message="file missing: @{path}">
-            <condition>
-              <not>
-                <available file="@{path}"/>
-              </not>
-            </condition>
-          </fail>
-        </sequential>
+      <sequential>
+        <fail message="file missing: @{path}">
+          <condition>
+            <not>
+              <available file="@{path}"/>
+            </not>
+          </condition>
+        </fail>
+      </sequential>
     </macrodef>
 
     <presetdef name="verify-release-dir">
       <require-dir path="${release.dir}" />
     </presetdef>
-
-    <macrodef name="require">
-      <attribute name="p" />
-        <sequential>
-          <fail unless="@{p}" message="unset property @{p}" />
-        </sequential>
-    </macrodef>
-
 
     <mkdir dir="${downloads.dir}"/>
 
@@ -184,7 +211,7 @@
 
       Fetching and validating artifacts in ${release.dir}
       release.dir=${release.dir}
-      nexus.staging.url=${nexus.staging.url}
+      asf.staging.url=${asf.staging.url}
 
       scp.source=${scp.source}
       http.source=${http.source}
@@ -205,15 +232,18 @@
     </echo>
   </target>
 
+  <!--
+  This is just here to stop problems if you double type ant.
+  -->
+  <target name="ant">
+    <echo>duplicate ant on the command line</echo>
+  </target>
+  
   <target name="clean"
     description="clean up target/ dir">
     <!-- Delete the ${dist} directory trees -->
     <delete dir="${target}"/>
     <delete dir="${downloads.dir}"/>
-  </target>
-
-  <target name="ant">
-    <echo>duplicate ant on the command line</echo>
   </target>
 
   <target name="purge-from-maven" depends="init"
@@ -339,10 +369,14 @@
 
   </target>
 
+  <!-- ========================================================= -->
+  <!--  Staging operations  -->
+  <!-- ========================================================= -->
+
   <target name="stage" depends="init"
     description="move the RC to the svn staging dir">
 
-    <fail message="unset: staging.dir" unless="staging.dir"/>
+    <require p="staging.dir"/>
 
     <echo>moving ${release.dir} to ${staging.dir}</echo>
     <move
@@ -364,8 +398,8 @@
   <target name="staging-init"
     description="init svn staging"
     depends="init">
-    <fail unless="jira.id"/>
-    <fail unless="git.commit.id"/>
+    <require p="jira.id"/>
+    <require p="git.commit.id"/>
     <echo>
       staging.commit.msg = ${staging.commit.msg}
       production.commit.msg = ${production.commit.msg}
@@ -490,8 +524,8 @@
       Set the git commit number in git.commit.id
     </fail>
 
-    <fail unless="nexus.staging.url">
-      Set the nexus staging repository URL in nexus.staging.url
+    <fail unless="asf.staging.url">
+      Set the apache staging URL in asf.staging.url
     </fail>
 
     <loadfile property="message.txt"
@@ -512,8 +546,30 @@ Message is in file ${message.out}
 
   </target>
 
+  <!-- ========================================================= -->
+  <!-- Spark -->
+  <!-- ========================================================= -->
+
+
+  <!--
+  spark-specific init options etc
+  -->
+  <target name="spark.init" if="spark.dir"
+    depends="init">
+
+
+    <!-- for spark builds -->
+    <property name="spark.version" value="3.5.0-SNAPSHOT"/>
+    <!--  spark excludes hadoop-aws dependency and forces in their own
+          this fixes it to be in sync with hadoop
+          see https://issues.apache.org/jira/browse/SPARK-39969
+     -->
+    <property name="spark.aws.version" value="1.12.316"/>
+
+  </target>
+
   <target name="spark.build" if="spark.dir"
-    depends="init"
+    depends="spark.init"
     description="build the spark release in spark.dir">
     <echo>
 
@@ -601,6 +657,10 @@ Message is in file ${message.out}
     </mvn>
   </target>
 
+  <!-- ========================================================= -->
+  <!-- Google GCS. Java 11+ -->
+  <!-- ========================================================= -->
+
 
   <target name="gcs.build" if="bigdata-interop.dir"
     depends="init"
@@ -638,6 +698,12 @@ Message is in file ${message.out}
     </mvn>
   </target>
 
+  <!-- ========================================================= -->
+  <!-- HBoss: hbase filesystem wrapper -->
+  <!-- uses aws sdk APIs for its mocking -->
+  <!-- ========================================================= -->
+
+
   <target name="hboss.build" if="hboss.dir"
     depends="init"
     description="Build the hboss artifacts">
@@ -658,6 +724,7 @@ Message is in file ${message.out}
       <arg value="-DskipTests"/>
     </mvn>
   </target>
+
   <target name="hboss.test" if="hboss.dir"
     depends="init"
     description="Build and test the hboss artifacts">
@@ -679,6 +746,10 @@ Message is in file ${message.out}
     </mvn>
   </target>
 
+  <!-- ========================================================= -->
+  <!-- https://github.com/steveloughran/cloudstore  -->
+  <!-- ========================================================= -->
+
 
   <target name="cloudstore.build" if="cloudstore.dir"
     depends="init"
@@ -688,14 +759,21 @@ Message is in file ${message.out}
       if this is done with java11, it shouldn't be released.
 
     </echo>
+    <require p="cloudstore.profile"/>
+
     <mvn dir="${cloudstore.dir}">
       <arg value="-Psnapshots-and-staging"/>
-      <arg value="-Pextra"/>
+      <arg value="-P${cloudstore.profile}"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="clean"/>
       <arg value="package"/>
+      <arg value="test"/>
     </mvn>
   </target>
+
+  <!-- ========================================================= -->
+  <!-- Hadoop FS API shim WiP -->
+  <!-- ========================================================= -->
 
 
   <target name="fsapi.test" if="fs-api-shim.dir"
@@ -714,6 +792,10 @@ Message is in file ${message.out}
     </mvn>
   </target>
 
+  <!-- ========================================================= -->
+  <!-- Parquet -->
+  <!-- ========================================================= -->
+
   <target name="parquet.build" if="parquet.dir"
     depends="init"
     description="Build parquet">
@@ -725,8 +807,8 @@ Message is in file ${message.out}
     <mvn dir="${parquet.dir}">
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="-Pasf-staging"/>
-      <arg value="--pl"/>
-      <arg value="parquet-hadoop"/>
+<!--      <arg value="&#45;&#45;pl"/>
+      <arg value="parquet-hadoop"/>-->
       <arg value="clean"/>
       <arg value="install"/>
       <arg value="-DskipTests"/>
@@ -734,7 +816,7 @@ Message is in file ${message.out}
   </target>
 
   <target name="parquet.test" if="parquet.dir"
-    depends="init"
+    depends="parquet.build"
     description="Build and test the parquet-hadoop module">
     <echo>
       Build and test parquet-hadoop.
@@ -749,12 +831,18 @@ Message is in file ${message.out}
     </mvn>
   </target>
 
+  <!-- ========================================================= -->
+  <!-- Avro. Needs lots of jdk installations. -->
+  <!-- ========================================================= -->
+
   <target name="avro.build" if="avro.dir"
     depends="init"
     description="Build avro">
     <echo>
       Build avro.
-      Relies on the user having an asf-staging profile.
+      * Relies on the user having an asf-staging profile.
+      * needs a java8 toolchain set up
+        https://maven.apache.org/guides/mini/guide-using-toolchains.html
     </echo>
     <mvn dir="${avro.dir}/lang/java">
       <arg value="-Dhadoop.version=${hadoop.version}"/>
@@ -764,6 +852,10 @@ Message is in file ${message.out}
       <arg value="-DskipTests"/>
     </mvn>
   </target>
+
+  <!-- ========================================================= -->
+  <!-- Release targets -->
+  <!-- ========================================================= -->
 
 
   <!--  Fetch the artifacts from an http repo, for validating someone else's release.
@@ -796,6 +888,16 @@ Message is in file ${message.out}
       file="${incoming.dir}"
       tofile="${release.dir}"/>
     <echo>copied http downloaded artifacts to ${release.dir}</echo>
+  </target>
+
+  <target name="release.fetch.arm" depends="init"
+    description="fetch the arm artifacts from a remote http site">
+    <fail unless="http.source"/>
+    <mkdir dir="${incoming.dir}"/>
+    <get src="${http.source}/${arm.binary.filename}"
+         dest="${incoming.dir}"
+         verbose="true"
+         usetimestamp="true"/>
   </target>
 
   <target name="release.site.untar" depends="release.dir.check"

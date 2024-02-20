@@ -316,7 +316,8 @@ ant cloudstore.build
 
 [Big Data Interop](https://github.com/GoogleCloudPlatform/bigdata-interop).
 
-This is java 11+ only.
+* This is java 11+ only.
+* currently only builds against AWS v1 SDK.
 
 Ideally, you should run the tests, or even better, run them before the RC is up for review.
 
