@@ -1,32 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.github.steveloughran</groupId>
-  <artifactId>client-validator</artifactId>
+  <groupId>org.apache.hadoop</groupId>
+  <artifactId>hadoop-release-support</artifactId>
   <version>1.0-SNAPSHOT</version>
 
-  <name>client-validator</name>
+  <name>hadoop-release-support</name>
 
-  <url>https://github.com/steveloughran/validate-hadoop-client-artifacts</url>
+  <url>https://github.com/apache/hadoop-release-support</url>
 
   <description>
-    Project to verify hadoop client jars are good.
-
-    To build with the client API
-
-    mvn clean test
-
-    to force an update
-
-    mvn clean test  -Pstaging -U
-
-    This imports a lot so that the artifacts can
-    all be retrieved from staging and stored locally so that
-    other projects can find them.
-
+    Support for creating/validating Hadoop releases.
+    Most of the work here is in the Ant build.xml files,
+    which invokes the maven module from some of its targets.
 
   </description>
 
@@ -64,88 +54,159 @@
     </dependency>
 
     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-common</artifactId>
-       <version>${hadoop.version}</version>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-common</artifactId>
-       <version>${hadoop.version}</version>
-       <type>test-jar</type>
-     </dependency>
-    <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-mapreduce-client-core</artifactId>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
       <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+      <version>${hadoop.version}</version>
+      <type>test-jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-yarn-server-common</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-yarn-server-tests</artifactId>
+      <version>${hadoop.version}</version>
+      <type>test-jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-yarn-server-tests</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-hs</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-examples</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-hdfs</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-hdfs</artifactId>
+      <version>${hadoop.version}</version>
+      <type>test-jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-distcp</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-distcp</artifactId>
+      <version>${hadoop.version}</version>
+      <type>test-jar</type>
+    </dependency>
+    <!-- artifacts needed to bring up a Mini MR Yarn cluster-->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-app</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-app</artifactId>
+      <type>test-jar</type>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
+      <version>${hadoop.version}</version>
+      <type>test-jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-minikdc</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-cloud-storage</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+<!-- why not?
 
-     </dependency>
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-yarn-server-tests</artifactId>
-       <version>${hadoop.version}</version>
-       <type>test-jar</type>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-        <artifactId>hadoop-mapreduce-client-hs</artifactId>
-       <version>${hadoop.version}</version>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-mapreduce-examples</artifactId>
-       <version>${hadoop.version}</version>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-hdfs</artifactId>
-       <version>${hadoop.version}</version>
-       <type>test-jar</type>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-distcp</artifactId>
-       <version>${hadoop.version}</version>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-distcp</artifactId>
-       <version>${hadoop.version}</version>
-       <type>test-jar</type>
-     </dependency>
-     <!-- artifacts needed to bring up a Mini MR Yarn cluster-->
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-mapreduce-client-app</artifactId>
-       <version>${hadoop.version}</version>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-mapreduce-client-app</artifactId>
-       <type>test-jar</type>
-       <version>${hadoop.version}</version>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
-       <version>${hadoop.version}</version>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
-       <version>${hadoop.version}</version>
-       <type>test-jar</type>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-minikdc</artifactId>
-       <version>${hadoop.version}</version>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-cloud-storage</artifactId>
-       <version>${hadoop.version}</version>
-     </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>federation-balance</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+-->
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-resourceestimator</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-sls</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-archive-logs</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-datajoin</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-rumen</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-dynamometer-blockgen</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+
+    <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-dynamometer-infra</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-yarn-common</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+
 
 
     <dependency>
@@ -154,43 +215,45 @@
       <version>4.13.2</version>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-reload4j</artifactId>
-      <version>${slf4j.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>ch.qos.reload4j</groupId>
-      <artifactId>reload4j</artifactId>
-      <version>${reload4j.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.sun.jdmk</groupId>
-          <artifactId>jmxtools</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.sun.jmx</groupId>
-          <artifactId>jmxri</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>javax.mail</groupId>
-          <artifactId>mail</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>javax.jms</groupId>
-          <artifactId>jmx</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>javax.jms</groupId>
-          <artifactId>jms</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
+    <!--
+        <dependency>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+          <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-reload4j</artifactId>
+          <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>ch.qos.reload4j</groupId>
+          <artifactId>reload4j</artifactId>
+          <version>${reload4j.version}</version>
+          <exclusions>
+            <exclusion>
+              <groupId>com.sun.jdmk</groupId>
+              <artifactId>jmxtools</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>com.sun.jmx</groupId>
+              <artifactId>jmxri</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>javax.mail</groupId>
+              <artifactId>mail</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>javax.jms</groupId>
+              <artifactId>jmx</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>javax.jms</groupId>
+              <artifactId>jms</artifactId>
+            </exclusion>
+          </exclusions>
+        </dependency>
+    -->
 
   </dependencies>
   <!--
@@ -332,7 +395,7 @@
               <configuration>
                 <rules>
                   <requireMavenVersion>
-                    <version>3.4.0</version>
+                    <version>3.3.6</version>
                   </requireMavenVersion>
                 </rules>
               </configuration>

@@ -1,23 +1,119 @@
-# Validate Hadoop Release Artifacts
+<!---
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
 
-This project helps validate hadoop release candidates
+   http://www.apache.org/licenses/LICENSE-2.0
 
-It has an ant `build.xml` file to help with preparing the release,
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License. See accompanying LICENSE file.
+-->
+
+# Hadoop Release Support
+
+This project helps create validate hadoop release candidates
+
+It has an Apache Ant `build.xml` file to help with preparing the release,
 validating gpg signatures, creating release messages and other things.
+
+There is a maven `pom.xml` file. This is used to validate the dependencies
+from staging repositories as well as run some basic tests to validate
+the classpath.
+
+
+## Files
+
+###  `/build.xml`
+
+It has an Apache Ant `build.xml` file to help with preparing the release,
+validating gpg signatures, creating release messages and other things.
+
+###  `/pom.xml`
+
+There is a maven `pom.xml` file. This is used to validate the dependencies
+from staging repositories as well as run some basic tests to validate
+the classpath.
+
+
+###  `/build.properties`
+
+This is an optional property file which contains all user-specific customizations
+and options to assist in the release process.
+
+This file is *not* SCM-managed.
+
+It is read before all other property files are read/ant properties
+set, so can override any subsequent declarations.
+
+
+### Release index file: `/release.properties`
+
+This is a single-entry property file which provides a relative
+path to the latest release being worked on in this branch.
+
+1. It is SCM-managed.
+2. It is read after `build.properties`
+
+```properties
+release.info.file=src/releases/release-info-3.4.0.properties
+```
+
+### Release info file `src/releases/release-info-*.properties`
+
+Definition files of base properties for the active RC.
+
+* SCM-managed
+* Defines properties which are common to everyone building/validating
+  an RC.
+
+As an example, here is the value `src/releases/release-info-3.4.0.properties` for the RC2
+release candidate
+
+```properties
+hadoop.version=3.4.0
+rc=RC2
+previous.version=3.3.6
+release.branch=3.4
+git.commit.id=88fbe62f27e
+
+jira.id=HADOOP-19018
+jira.title=Release 3.4.0
+
+amd.src.dir=https://dist.apache.org/repos/dist/dev/hadoop/hadoop-3.4.0-RC2
+arm.src.dir=${amd.src.dir}
+http.source=${amd.src.dir}
+asf.staging.url=https://repository.apache.org/content/repositories/orgapachehadoop-1402
+
+cloudstore.profile=sdk2
+```
+
+
 
 # workflow for preparing an RC
 
 Build the RC using the docker process on whichever host is set to do it.
 
+
+### Create a `src/releases/release-X.Y.X.properties`
+
+Create a new release properties file, using an existing one as a template.
+Update as a appropriate.
+
+### Update `/release.properties`
+
+Update the value of `release.info.file` in `/release.properties` to
+point to the newly created file.
+
+```properties
+release.info.file=src/releases/release-info-X.Y.Z.properties
+```
+
 ### set up `build.properties`
 
 ```properties
-hadoop.version=3.3.5
-# RC for emails, staging dir names
-rc=0
-
-# id of commit built; used for email
-git.commit.id=3262495904d
 
 # info for copying down the RC from the build host
 scp.hostname=stevel-ubuntu
@@ -200,11 +296,9 @@ locally.
 
 # How to download and build a staged release candidate
 
-In build properties, declare `hadoop.version`, `rc` and `http.source`
+This relies on the release-info file pointing to the source directory
 
 ```properties
-hadoop.version=3.3.5
-rc=3
 http.source=https://dist.apache.org/repos/dist/dev/hadoop/hadoop-${hadoop.version}-RC${rc}/
 ```
 
@@ -280,20 +374,21 @@ A lot of the targets build maven projects from the staged maven artifacts.
 
 For this to work
 
-1. Check out the relevant projects somewhere
+1. Check out the relevant projects in your local system.
 2. Set their location in the `build.properties` file
 3. Make sure that the branch checked out is the one you want to build.
    This matters for anyone who works on those other projects
    on their own branches.
-4. Some projects need java11.
+4. Some projects need java11 or later. 
 
-First, purge your maven repo
+First, purge your maven repository of all hadoop- JAR files of the
+pending release version
 
 ```bash
 ant purge-from-maven
 ```
 
-## client validator maven
+## execute the maven test.
 
 Download the artifacts from maven staging repositories and compile/test a minimal application
 
@@ -301,18 +396,15 @@ Download the artifacts from maven staging repositories and compile/test a minima
 ant mvn-test
 ```
 
-## Cloudstore
+## Build and test Cloudstore diagnostics
 
 [cloudstore](https://github.com/steveloughran/cloudstore).
-
-No tests, sorry.
 
 ```bash
 ant cloudstore.build
 ```
 
-## Google GCS
-
+## Build and test Google GCS
 
 [Big Data Interop](https://github.com/GoogleCloudPlatform/bigdata-interop).
 
@@ -328,7 +420,7 @@ Do this only if you aren't running the tests.
 ant gcs.build
 ```
 
-## Apache Spark
+## Build Apache Spark
 
 Validates hadoop client artifacts; the cloud tests cover hadoop cloud storage clients.
 
@@ -336,7 +428,7 @@ Validates hadoop client artifacts; the cloud tests cover hadoop cloud storage cl
 ant spark.build
 ```
 
-And to to run the hadoop-cloud tests
+And to to run the `hadoop-cloud` tests
 
 ```bash
 ant spark.test.hadoop-cloud
@@ -366,7 +458,7 @@ The test run is fairly tricky to get running; don't try and do this while
   (s3a, abfs, gcs)
 
 
-## HBase filesystem
+## Build and test HBase filesystem
 
 [hbase-filesystem](https://github.com/apache/hbase-filesystem.git)
 
@@ -421,7 +513,7 @@ ant release.site.untar
 ant release.site.docs
 ```
 
-Review the announcement.
+## Review the announcement.
 
 ### Manually link the site current/stable symlinks to the new release
 

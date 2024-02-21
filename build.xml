@@ -16,15 +16,15 @@
   ~ limitations under the License.
   -->
 
-<project name="hadoop-release" default="init" basedir=".">
+<project name="hadoop-release-support" default="init" basedir=".">
   <description>
-    build file to manage release and validation of artifacts.
+    Module to manage release and validation of artifacts.
     Maven is simply one of the targets here.
 
     It loads three property files in order:
     * build.properties: custom deployment options. User managed.
     * release.properties: pointer to the real release file. SCM-managed.
-    * src/releases/${release.property.file}: the actual release properties
+    * src/releases/${release.info.file}: the actual release properties
       which contains things like git tag, release and RC version etc.
       SCM-managed.
     
@@ -63,6 +63,7 @@
       <show name="@{p}" />
     </sequential>
   </macrodef>
+
   <!--  set: set a property and print its value-->
   <macrodef name="set">
     <attribute name="name" />
@@ -102,17 +103,17 @@
   
   <!--
    Load the release.properties file
-   This MUST contain an absolute/relative path to the release.properties
-   file if not set in build.properties.
+   This MUST contain an absolute/relative path to the release-info
+   properties file if not set in build.properties.
    -->
   <loadproperties srcFile="release.properties"/>
-  <require p="release.property.file"/>
-  <!-- and load the file it referencves.-->
-  <loadproperties srcFile="${release.property.file}"/>
+  <require p="release.info.file"/>
+  <!-- and load the file it references.-->
+  <loadproperties srcFile="${release.info.file}"/>
 
 
   <!--
-   Load all property files, validate the settings, build the ant
+   Validate the settings, build the ant
    properties, define macros etc.
   -->
   
@@ -293,6 +294,12 @@
       <arg value="-Pstaging"/>
       <arg value="-Dhadoop.version=${hadoop.version}"/>
       <arg value="-U"/>
+    </mvn>
+    <mvn>
+      <arg value="dependency:tree"/>
+      <arg value="-Pstaging"/>
+      <arg value="-Dverbose"/>
+      <arg value="-Dhadoop.version=${hadoop.version}"/>
     </mvn>
   </target>
 
